@@ -2,6 +2,10 @@ package mapreduce
 
 import (
 	"hash/fnv"
+
+	"io/ioutil"
+	"log"
+	"os"
 )
 
 // doMap does the job of a map worker: it reads one of the input files
@@ -40,6 +44,61 @@ func doMap(
 	//     err := enc.Encode(&kv)
 	//
 	// Remember to close the file after you have written all the values!
+
+	////////////////////
+	debug("in doMap")
+
+	// read input file
+	// DISCUSSION: which reader to use?
+	contents, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// calls the user-defined map function (mapF) for that file's contents
+	results := mapF(inFile, string(contents))
+
+	// partitions the output into nReduce intermediate files
+	// use ihash func to decide which file a given key belongs to (i.e., decide R)
+	// use reduceName after finding R to get output filename
+	// serialize outputs as json
+
+	// open all the intermediate output files
+	files := make(map[string]*File)
+	for i := 0; i < nReduce; i++ {
+		fileName = reduceName(jobName, mapTaskNumber, i)
+		file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		econ
+
+		files[fileName] = file
+	}
+
+	// for each value returned from mapf, append it to the correct file
+	for _, kv := range results {
+		reduceTaskNumber := reduceTask(kv.Key, nReduce)
+		outputFile := reduceName(jobName, mapTaskNumber, reduceTaskNumber)
+
+
+		for _, kv := ... {
+			err := enc.Encode(&kv)
+			
+
+		
+
+		files[outputFile].WriteString(
+	}
+
+	debug("end doMap")
+}
+
+// correct to just cast here?
+func reduceTaskNumber(key string, nReduce int) uint32 {
+	return ihash(key) % uint32(nReduce)
 }
 
 func ihash(s string) uint32 {
