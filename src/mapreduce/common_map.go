@@ -1,8 +1,10 @@
 package mapreduce
 
 import (
+	"fmt"
 	"hash/fnv"
 
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
@@ -63,41 +65,36 @@ func doMap(
 	// use reduceName after finding R to get output filename
 	// serialize outputs as json
 
-	// open all the intermediate output files
-	files := make(map[string]*File)
+	// open all the intermediate output files + make map of filename => encoder
+	encoders := make(map[string]*json.Encoder)
 	for i := 0; i < nReduce; i++ {
-		fileName = reduceName(jobName, mapTaskNumber, i)
+		fileName := reduceName(jobName, mapTaskNumber, i)
 		file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer file.Close()
 
-		econ
-
-		files[fileName] = file
+		encoder := json.NewEncoder(file)
+		encoders[fileName] = encoder
 	}
 
 	// for each value returned from mapf, append it to the correct file
 	for _, kv := range results {
-		reduceTaskNumber := reduceTask(kv.Key, nReduce)
+		reduceTaskNumber := int(reduceTask(kv.Key, nReduce))
 		outputFile := reduceName(jobName, mapTaskNumber, reduceTaskNumber)
 
-
-		for _, kv := ... {
-			err := enc.Encode(&kv)
-			
-
-		
-
-		files[outputFile].WriteString(
+		err = encoders[outputFile].Encode(&kv)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	debug("end doMap")
 }
 
 // correct to just cast here?
-func reduceTaskNumber(key string, nReduce int) uint32 {
+func reduceTask(key string, nReduce int) uint32 {
 	return ihash(key) % uint32(nReduce)
 }
 
