@@ -1,5 +1,13 @@
 package mapreduce
 
+import (
+	"encoding/json"
+	_ "fmt"
+	"log"
+	"os"
+	_ "sort"
+)
+
 // doReduce does the job of a reduce worker: it reads the intermediate
 // key/value pairs (produced by the map phase) for this task, sorts the
 // intermediate key/value pairs by key, calls the user-defined reduce function
@@ -31,4 +39,63 @@ func doReduce(
 	// 	enc.Encode(KeyValue{key, reduceF(...)})
 	// }
 	// file.Close()
+
+	//////////////////
+
+	// get all intermediate files for this reducetask
+	// there are nMap files of form:
+	// mrtemp-<jobName>-<range nMap>-<reduceTaskNumber>
+
+	decoders := make([]*json.Decoder, 0, nMap) // DISCUSSION: don't forget second argument
+	for i := 0; i < nMap; i++ {
+		fileName := reduceName(jobName, i, reduceTaskNumber)
+		file, err := os.Open(fileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		decoder := json.NewDecoder(file)
+		decoders = append(decoders, decoder)
+	}
+
+	// parse all these files from json
+	var kv KeyValue // DISCUSSION: right place to init this??
+	kvs := make([]KeyValue, 0)
+	for _, decoder := range decoders {
+		for decoder.More() {
+			err := decoder.Decode(&kv)
+			if err != nil {
+				log.Fatal(err)
+			}
+			kvs = append(kvs, kv)
+		}
+	}
+
+	// sort all the data
+	// sort.Sort(kvs) // TODO: implement sort.Interface
+
+	// group each key, merging all values into a single array
+	// (if i don't group, TestSingle should pass, but not TestMany)
+	// UPDATE: passed anyways?
+
+	mergeFileName := mergeName(jobName, reduceTaskNumber)
+	mergeFile, err := os.Create(mergeFileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer mergeFile.Close()
+
+	enc := json.NewEncoder(mergeFile)
+	for _, kv := range kvs {
+		enc.Encode(KeyValue{kv.Key, reduceF(kv.Key, []string{kv.Value})})
+	}
+
 }
+
+// implement sort.Interface for KeyValues
+// type ByKey []KeyValue
+
+// func (a ByKey) Len() int { return len(a) }
+
+// func (
