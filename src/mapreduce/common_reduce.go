@@ -2,11 +2,19 @@ package mapreduce
 
 import (
 	"encoding/json"
-	_ "fmt"
 	"log"
 	"os"
-	_ "sort"
+	"sort"
 )
+
+// implement sort.Interface for KeyValue
+type ByKey []KeyValue
+
+func (a ByKey) Len() int { return len(a) }
+
+func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
+
+func (a ByKey) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 // doReduce does the job of a reduce worker: it reads the intermediate
 // key/value pairs (produced by the map phase) for this task, sorts the
@@ -73,7 +81,7 @@ func doReduce(
 	}
 
 	// sort all the data
-	// sort.Sort(kvs) // TODO: implement sort.Interface
+	sort.Sort(ByKey(kvs))
 
 	// group each key, merging all values into a single array
 	// (if i don't group, TestSingle should pass, but not TestMany)
@@ -93,9 +101,3 @@ func doReduce(
 
 }
 
-// implement sort.Interface for KeyValues
-// type ByKey []KeyValue
-
-// func (a ByKey) Len() int { return len(a) }
-
-// func (
