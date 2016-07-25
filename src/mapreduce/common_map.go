@@ -1,10 +1,8 @@
 package mapreduce
 
 import (
-	"fmt"
-	"hash/fnv"
-
 	"encoding/json"
+	"hash/fnv"
 	"io/ioutil"
 	"log"
 	"os"
@@ -20,36 +18,6 @@ func doMap(
 	nReduce int, // the number of reduce task that will be run ("R" in the paper)
 	mapF func(file string, contents string) []KeyValue,
 ) {
-	// TODO:
-	// You will need to write this function.
-	// You can find the filename for this map task's input to reduce task number
-	// r using reduceName(jobName, mapTaskNumber, r). The ihash function (given
-	// below doMap) should be used to decide which file a given key belongs into.
-	//
-	// The intermediate output of a map task is stored in the file
-	// system as multiple files whose name indicates which map task produced
-	// them, as well as which reduce task they are for. Coming up with a
-	// scheme for how to store the key/value pairs on disk can be tricky,
-	// especially when taking into account that both keys and values could
-	// contain newlines, quotes, and any other character you can think of.
-	//
-	// One format often used for serializing data to a byte stream that the
-	// other end can correctly reconstruct is JSON. You are not required to
-	// use JSON, but as the output of the reduce tasks *must* be JSON,
-	// familiarizing yourself with it here may prove useful. You can write
-	// out a data structure as a JSON string to a file using the commented
-	// code below. The corresponding decoding functions can be found in
-	// common_reduce.go.
-	//
-	//   enc := json.NewEncoder(file)
-	//   for _, kv := ... {
-	//     err := enc.Encode(&kv)
-	//
-	// Remember to close the file after you have written all the values!
-
-	////////////////////
-	debug("in doMap")
-
 	// read input file
 	// DISCUSSION: which reader to use?
 	contents, err := ioutil.ReadFile(inFile)
@@ -58,18 +26,16 @@ func doMap(
 	}
 
 	// calls the user-defined map function (mapF) for that file's contents
+	// DISCUSSION: bc used ioutil, have to cast contents to string here
 	results := mapF(inFile, string(contents))
 
-	// partitions the output into nReduce intermediate files
-	// use ihash func to decide which file a given key belongs to (i.e., decide R)
-	// use reduceName after finding R to get output filename
-	// serialize outputs as json
-
-	// open all the intermediate output files + make map of filename => encoder
+	// create + open all intermediate output files ahead of time
+	// init a json encoder for each open intermediate file
+	// return map map of filename => encoder
 	encoders := make(map[string]*json.Encoder)
 	for i := 0; i < nReduce; i++ {
 		fileName := reduceName(jobName, mapTaskNumber, i)
-		file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666) // better way to ensure append?
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -79,7 +45,7 @@ func doMap(
 		encoders[fileName] = encoder
 	}
 
-	// for each value returned from mapf, append it to the correct file
+	// append each result key to the correct file as json
 	for _, kv := range results {
 		reduceTaskNumber := int(reduceTask(kv.Key, nReduce))
 		outputFile := reduceName(jobName, mapTaskNumber, reduceTaskNumber)
@@ -89,11 +55,9 @@ func doMap(
 			log.Fatal(err)
 		}
 	}
-
-	debug("end doMap")
 }
 
-// correct to just cast here?
+// DISCUSSION: correct to just cast return value here instead of at caller?
 func reduceTask(key string, nReduce int) uint32 {
 	return ihash(key) % uint32(nReduce)
 }
