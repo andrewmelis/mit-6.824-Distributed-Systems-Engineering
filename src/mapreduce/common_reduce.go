@@ -83,9 +83,11 @@ func doReduce(
 	// sort all the data
 	sort.Sort(ByKey(kvs))
 
-	// group each key, merging all values into a single array
-	// (if i don't group, TestSingle should pass, but not TestMany)
-	// UPDATE: passed anyways?
+	// group values for each key
+	reduceInputs := make(map[string][]string)
+	for _, kv := range kvs {
+		reduceInputs[kv.Key] = append(reduceInputs[kv.Key], kv.Value)
+	}
 
 	mergeFileName := mergeName(jobName, reduceTaskNumber)
 	mergeFile, err := os.Create(mergeFileName)
@@ -95,8 +97,8 @@ func doReduce(
 	defer mergeFile.Close()
 
 	enc := json.NewEncoder(mergeFile)
-	for _, kv := range kvs {
-		enc.Encode(KeyValue{kv.Key, reduceF(kv.Key, []string{kv.Value})})
+	for key, value := range reduceInputs { // range over groups, not just all kvs
+		enc.Encode(KeyValue{key, reduceF(key, value)}) // need to pass in memoized list instead of just kv.value
 	}
 
 }
