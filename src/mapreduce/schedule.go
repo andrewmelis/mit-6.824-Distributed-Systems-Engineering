@@ -25,7 +25,7 @@ func (mr *Master) schedule(phase jobPhase) {
 	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 	//
 
-	taskStatus := make(map[int]bool)
+	// taskStatus := make(map[int]bool)
 
 	for i := 0; i < ntasks; i++ {
 		fmt.Printf("waiting to schedule task %d\n", i)
@@ -46,27 +46,27 @@ func (mr *Master) schedule(phase jobPhase) {
 	fmt.Printf("Schedule: %v phase done\n", phase)
 }
 
-func (mr *Master) scheduleTask(doTaskArgs *DoTaskArgs, inProgressChan chan *InProgressTask )  {
-	worker := <-mr.registerChannel
-	task := InProgressTask{TaskArgs: doTaskArgs, Worker: worker, CallChan: make(chan bool)}
-	go func() {
-		task.CallChan <- call(task.Worker, "Worker.DoTask", &task.DoTaskArgs, new(struct{}))
-	}()
-	inProgressChan <- task
-}
+// func (mr *Master) scheduleTask(doTaskArgs *DoTaskArgs, inProgressChan chan *InProgressTask )  {
+// 	worker := <-mr.registerChannel
+// 	task := InProgressTask{TaskArgs: doTaskArgs, Worker: worker, CallChan: make(chan bool)}
+// 	go func() {
+// 		task.CallChan <- call(task.Worker, "Worker.DoTask", &task.DoTaskArgs, new(struct{}))
+// 	}()
+// 	inProgressChan <- task
+// }
 
-func (mr *Master) completedTask(inProgressChan chan *InProgressTask, taskStatus map[int]bool) {
-	for task := range inProgressChan {
-		if <-task.CallChan {
+// func (mr *Master) completedTask(inProgressChan chan *InProgressTask, taskStatus map[int]bool) {
+// 	for task := range inProgressChan {
+// 		if <-task.CallChan {
 			
-		} else {
+// 		} else {
 			
-		}
-	}
-}
+// 		}
+// 	}
+// }
 
-type InProgressTask struct {
-	TaskArgs *DoTaskArgs
-	Worker   string
-	CallChan chan bool
-}
+// type InProgressTask struct {
+// 	TaskArgs *DoTaskArgs
+// 	Worker   string
+// 	CallChan chan bool
+// }
