@@ -64,7 +64,7 @@ func (mr *Master) scheduler(taskChan chan *DoTaskArgs, completedChan chan<- task
 			switch ok {
 			case true:
 				completedChan <- taskNumber(task.TaskNumber)
-				mr.myRegister(worker)
+				mr.reregister(worker)
 			case false:
 				debug("DoTask: RPC %s Worker.DoTask error %+v. Retrying\n", worker, task)
 				taskChan <- task
@@ -73,7 +73,8 @@ func (mr *Master) scheduler(taskChan chan *DoTaskArgs, completedChan chan<- task
 	}
 }
 
-func (mr *Master) myRegister(worker string) {
+// TODO: seems arbitrary to use rpc calls here
+func (mr *Master) reegister(worker string) {
 	ok := call(mr.address, "Master.Register", RegisterArgs{Worker: worker}, new(struct{}))
 	if ok == false {
 		debug("Register: Worker %s failed to register with master %s\n", worker, mr.address)
