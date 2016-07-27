@@ -15,7 +15,7 @@ func (mr *Master) schedule(phase jobPhase) {
 		nios = len(mr.files)
 	}
 
-	debug("Schedule: %v %v tasks (%d I/Os)\n", ntasks, phase, nios)
+	fmt.Printf("Schedule: %v %v tasks (%d I/Os)\n", ntasks, phase, nios)
 
 	completedTaskChan := make(chan taskNumber)
 	allTasksDoneChan := make(chan bool)
@@ -33,7 +33,7 @@ func (mr *Master) schedule(phase jobPhase) {
 
 	<-allTasksDoneChan
 
-	debug("Schedule: %v phase done\n", phase)
+	fmt.Printf("Schedule: %v phase done\n", phase)
 }
 
 type taskNumber int
@@ -74,7 +74,7 @@ func (mr *Master) scheduler(taskChan chan *DoTaskArgs, completedChan chan<- task
 }
 
 // TODO: seems arbitrary to use rpc calls here
-func (mr *Master) reegister(worker string) {
+func (mr *Master) reregister(worker string) {
 	ok := call(mr.address, "Master.Register", RegisterArgs{Worker: worker}, new(struct{}))
 	if ok == false {
 		debug("Register: Worker %s failed to register with master %s\n", worker, mr.address)
