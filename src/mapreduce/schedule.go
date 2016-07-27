@@ -25,48 +25,62 @@ func (mr *Master) schedule(phase jobPhase) {
 	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 	//
 
-	// taskStatus := make(map[int]bool)
+	completedTaskChan := make(chan taskNumber)
+	allTasksDoneChan := make(chan bool)
+	go mr.bookKeeping(ntasks, completedTaskChan, allTasksDoneChan)
+
+	taskChan := make(chan *DoTaskArgs)
+	go mr.scheduler(taskChan, completedTaskChan)
 
 	for i := 0; i < ntasks; i++ {
 		fmt.Printf("waiting to schedule task %d\n", i)
-		doTaskArgs := &DoTaskArgs{JobName: mr.jobName, File: mr.files[i], Phase: phase, TaskNumber: i, NumOtherPhase: nios}
-		freeWorker := <-mr.registerChannel
-		// go func() {
-		ok := call(freeWorker, "Worker.DoTask", doTaskArgs, new(struct{}))
-		if ok == false {
-			fmt.Printf("DoTask: RPC %s Worker.DoTask error %+v\n", freeWorker, doTaskArgs)
-		}
-		ok = call(mr.address, "Master.Register", RegisterArgs{Worker: freeWorker}, new(struct{}))
-		if ok == false {
-			fmt.Printf("Register: Worker %s failed to register with master %s\n", freeWorker, mr.address)
-		}
-		// }()
+		task := &DoTaskArgs{JobName: mr.jobName, File: mr.files[i], Phase: phase, TaskNumber: i, NumOtherPhase: nios}
+		taskChan <- task
 	}
+
+	<-allTasksDoneChan
 
 	fmt.Printf("Schedule: %v phase done\n", phase)
 }
 
-// func (mr *Master) scheduleTask(doTaskArgs *DoTaskArgs, inProgressChan chan *InProgressTask )  {
-// 	worker := <-mr.registerChannel
-// 	task := InProgressTask{TaskArgs: doTaskArgs, Worker: worker, CallChan: make(chan bool)}
-// 	go func() {
-// 		task.CallChan <- call(task.Worker, "Worker.DoTask", &task.DoTaskArgs, new(struct{}))
-// 	}()
-// 	inProgressChan <- task
-// }
+type taskNumber int
 
-// func (mr *Master) completedTask(inProgressChan chan *InProgressTask, taskStatus map[int]bool) {
-// 	for task := range inProgressChan {
-// 		if <-task.CallChan {
-			
-// 		} else {
-			
-// 		}
-// 	}
-// }
+func (mr *Master) bookKeeping(ntasks int, completedTaskChan <-chan taskNumber, allTasksDoneChan chan<- bool) {
+	tasksCompleted := make([]bool, ntasks)
+	for task := range completedTaskChan {
+		tasksCompleted[task] = true
 
-// type InProgressTask struct {
-// 	TaskArgs *DoTaskArgs
-// 	Worker   string
-// 	CallChan chan bool
-// }
+		allDone := true // dangerous to assume success?
+		for _, val := range tasksCompleted {
+			if val != true {
+				allDone = false
+			}
+		}
+
+		if allDone == true {
+			allTasksDoneChan <- true
+		}
+	}
+}
+
+func (mr *Master) scheduler(taskChan chan *DoTaskArgs, completedChan chan<- taskNumber) {
+	for task := range taskChan {
+		worker := <-mr.registerChannel
+		ok := call(worker, "Worker.DoTask", task, new(struct{}))
+		switch ok {
+		case true:
+			completedChan <- taskNumber(task.TaskNumber)
+			mr.myRegister(worker)
+		case false:
+			fmt.Printf("DoTask: RPC %s Worker.DoTask error %+v. Retrying\n", worker, task)
+			taskChan <- task
+		}
+	}
+}
+
+func (mr *Master) myRegister(worker string) {
+	ok := call(mr.address, "Master.Register", RegisterArgs{Worker: worker}, new(struct{}))
+	if ok == false {
+		fmt.Printf("Register: Worker %s failed to register with master %s\n", worker, mr.address)
+	}
+}
