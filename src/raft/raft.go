@@ -53,9 +53,18 @@ type Raft struct {
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 
+	/* persistent state */
 	currentTerm int // latest term server has seen
-	votedFor    int // candidateId (`me`) that received vote in current term
+
 	// TODO should votedFor be updated / nulled if vote for losing candidate?
+	votedFor int // candidateId (`me`) that received vote in current term
+
+	// TODO spec says first index is 1 not zero...
+	log []LogEntry // array of pointers or structs
+
+	/* volatile state */
+	commitIndex int // index of highest log entry known to be committed
+	lastApplied int // index of highest log entry applied to state machine
 }
 
 // return currentTerm and whether this server
