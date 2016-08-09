@@ -48,6 +48,9 @@ type Raft struct {
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 
+	currentTerm int // latest term server has seen
+	votedFor    int // candidateId (`me`) that received vote in current term
+	// TODO should votedFor be updated / nulled if vote for losing candidate?
 }
 
 // return currentTerm and whether this server
