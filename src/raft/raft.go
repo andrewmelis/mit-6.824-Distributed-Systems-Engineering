@@ -108,7 +108,8 @@ type RequestVoteArgs struct {
 // example RequestVote RPC reply structure.
 //
 type RequestVoteReply struct {
-	// Your data here.
+	term        int
+	voteGranted bool
 }
 
 //
