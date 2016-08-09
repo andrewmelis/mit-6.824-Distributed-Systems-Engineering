@@ -67,6 +67,10 @@ type Raft struct {
 	lastApplied int // index of highest log entry applied to state machine
 }
 
+func (rf *Raft) lastLogEntry() LogEntry {
+	return rf.log[len(rf.log)-1]
+}
+
 // return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
