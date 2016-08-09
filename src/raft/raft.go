@@ -59,7 +59,10 @@ func (rf *Raft) GetState() (int, bool) {
 
 	var term int
 	var isleader bool
-	// Your code here.
+
+	term = rf.currentTerm
+	isLeader = votedFor == me
+
 	return term, isleader
 }
 
