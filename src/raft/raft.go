@@ -116,18 +116,18 @@ func (rf *Raft) readPersist(data []byte) {
 // example RequestVote RPC arguments structure.
 //
 type RequestVoteArgs struct {
-	term         int
-	candidateId  int
-	lastLogIndex int
-	lastLogTerm  int
+	Term         int
+	Candidateid  int
+	Lastlogindex int
+	Lastlogterm  int
 }
 
 //
 // example RequestVote RPC reply structure.
 //
 type RequestVoteReply struct {
-	term        int
-	voteGranted bool
+	Term        int
+	VoteGranted bool
 }
 
 //
