@@ -134,7 +134,21 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	// Your code here.
+}
+
+// TODO is there an official compare interface?
+// returns true if candidate is "at least as up-to-date"
+// as definted at end of section 5.4.1
+func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
+	lastLogEntry = rf.lastLogEntry()
+	switch {
+	case candidate.lastLogTerm > lastLogEntry.Term:
+		return true
+	case candidate.lastLogTerm == lastLogTerm.Term:
+		return candidate.lastLogIndex >= rf.lastApplied
+	case candidate.lastLogTerm < lastLogTerm.Term:
+		return false
+	}
 }
 
 //
