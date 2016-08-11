@@ -19,6 +19,7 @@ package raft
 
 import "sync"
 import "labrpc"
+import "fmt"
 
 // import "bytes"
 // import "encoding/gob"
@@ -58,6 +59,7 @@ type Raft struct {
 
 	// TODO should votedFor be updated / nulled if vote for losing candidate?
 	votedFor int // candidateId (`me`) that received vote in current term
+	votedThisTerm bool // can't null an int so must separate votedFor(id) && voted(bool)
 
 	// TODO spec says first index is 1 not zero...
 	log []LogEntry // array of pointers or structs
@@ -67,8 +69,8 @@ type Raft struct {
 	lastApplied int // index of highest log entry applied to state machine
 }
 
-func (rf *Raft) lastLogEntry() LogEntry {
-	return rf.log[len(rf.log)-1]
+func (rf *Raft) LastLogEntry() *LogEntry {
+	return &rf.log[len(rf.log)-1] // TODO pointer or value?
 }
 
 // return currentTerm and whether this server
@@ -76,12 +78,13 @@ func (rf *Raft) lastLogEntry() LogEntry {
 func (rf *Raft) GetState() (int, bool) {
 
 	var term int
-	var isleader bool
+	var isLeader bool
 
 	term = rf.currentTerm
-	isLeader = votedFor == me
-
-	return term, isleader
+	// isLeader = rf.votedFor == rf.me // TODO does this always work?
+	isLeader = false
+	
+	return term, isLeader
 }
 
 //
@@ -117,9 +120,9 @@ func (rf *Raft) readPersist(data []byte) {
 //
 type RequestVoteArgs struct {
 	Term         int
-	Candidateid  int
-	Lastlogindex int
-	Lastlogterm  int
+	CandidateId  int
+	LastLogIndex int
+	LastLogTerm  int
 }
 
 //
@@ -134,14 +137,16 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	reply.Term = currentTerm
+	reply.Term = rf.currentTerm
 
 	if args.Term < rf.currentTerm {
 		reply.VoteGranted = false
 		return
 	}
 
-	if rf.votedFor == nil || rf.votedFor == args.candidateId && rf.AtLeastAsUpToDate(args) {
+	fmt.Printf("findme: %t\n", rf.AtLeastAsUpToDate(args))
+
+	if rf.votedThisTerm == false || rf.votedFor == args.CandidateId && rf.AtLeastAsUpToDate(args) {
 		reply.VoteGranted = true
 	} else {
 		reply.VoteGranted = false
@@ -150,15 +155,18 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 
 // TODO is there an official compare interface?
 // returns true if candidate is "at least as up-to-date"
-// as definted at end of section 5.4.1
+// as defined at end of section 5.4.1
 func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
-	lastLogEntry = rf.lastLogEntry()
+	lastLogEntry := rf.LastLogEntry() // NOTE: this could be "zero" struct
+	fmt.Printf("%+v\n", lastLogEntry)
 	switch {
-	case candidate.lastLogTerm > lastLogEntry.Term:
+	case candidate.LastLogTerm > lastLogEntry.Term:
 		return true
-	case candidate.lastLogTerm == lastLogTerm.Term:
-		return candidate.lastLogIndex >= rf.lastApplied
-	case candidate.lastLogTerm < lastLogTerm.Term:
+	case candidate.LastLogTerm == lastLogEntry.Term:
+		return candidate.LastLogIndex >= rf.lastApplied
+	case candidate.LastLogTerm < lastLogEntry.Term:
+		return false
+	default: // TODO need this?
 		return false
 	}
 }
@@ -201,7 +209,7 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
 	term := -1
-	isLeader := true
+	isLeader := false
 
 	return index, term, isLeader
 }
@@ -236,8 +244,33 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// Your initialization code here.
 
+	// loop forever
+	// if timeout
+	// convert to candidate
+	// start election
+	// else
+	// 
+
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
 	return rf
 }
+
+// func follower() {}
+
+// func candidate() {}
+
+// func leader() {}
+
+
+
+// func (rf *Raft) startElection() {
+// 	// rf.
+// 	args := RequestVoteArgs{Term: lakjsdf, CandidateId: , LastLogIndex: , LastLogTerm: }
+	
+// 	for i := range peers {
+// 		// send out RequestVote rpcs
+// 		sendRequestVote(i, args, &reply)
+// 	}
+// }
