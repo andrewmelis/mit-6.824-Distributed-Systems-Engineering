@@ -254,10 +254,28 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	return rf
 }
+	go rf.beFollower()
+
 
 // func follower() {}
 
 // func candidate() {}
+
+func (rf *Raft) beFollower() {
+	// TODO randomize each cycle or persist in struct?
+	electionTimeout := rand.Intn(150) + 150 // paper suggests timeout between 150ms - 300ms
+	fmt.Printf("electionTimeout for peer %d: %dms\n", rf.me, electionTimeout)
+
+	for {
+		select {
+		case <-rf.voteCh:
+			fmt.Printf("peer %d got a vote\n")
+		case <-time.After(time.Duration(electionTimeout) * time.Millisecond):
+			fmt.Printf("peer %d election timeout... convert to candidate\n", rf.me)
+			// convert to candidate
+		}
+	}
+}
 
 // func leader() {}
 
