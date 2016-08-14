@@ -294,11 +294,90 @@ func (rf *Raft) beFollower() {
 	}
 }
 
+func (rf *Raft) beCandidate() {
+	rf.currentState = candidate
+	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
+	rf.currentTerm++
+	rf.voteForSelf()
 
+	wonElectionCh := make(chan struct{})
+	go rf.startElection(wonElectionCh)
 
+	for {
+		select {
+		case <-wonElectionCh:
+			DPrintf("peer %d received winElection msg ... convert to leader\n", rf.me)
+			go rf.beLeader()
+			return
+		// case <- appendEntriesCh:
+		case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
+			DPrintf("peer %d election timeout... convert to candidate\n", rf.me)
+			go rf.beCandidate()
+			return
+		}
+	}
+}
 
+func (rf *Raft) voteForSelf() {
+	rf.votedFor = rf.me
+	rf.votedThisTerm = true
+	DPrintf("peer %d votes for self\n", rf.me)
+}
+
+func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
+	DPrintf("peer %d starts election\n", rf.me)
+
+	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: rf.LastLogEntry().Term, LastLogTerm: rf.lastApplied}
+	reply := RequestVoteReply{}
+
+	electionVotesCh := make(chan int)
+	electionDoneCh := make(chan struct{})
+	go electionWorker(electionVotesCh, rf.majority(), electionDoneCh, wonElectionCh)
+
+	for i := range rf.peers {
+		go func(peerIndex int) {
+			if ok := rf.sendRequestVote(peerIndex, args, &reply); !ok {
+				DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
+				return
+			}
+
+			if reply.VoteGranted {
+				select {
+				case <-electionDoneCh:
+					DPrintf("election finished before peer %d sent in vote\n", peerIndex)
+				case electionVotesCh <- peerIndex: // can't just always send this because sending on a closed ch will block forever
+					DPrintf("peer %d votes for peer %d\n", peerIndex, rf.me)
+					// TODO bookkeeping with term of replying server
+				}
+			}
+		}(i)
+	}
+}
+
+// TODO find a way to use this instead of passing in poorly named int
+// func (rf *Raft) majority(candidate int) bool {
+// 	return candidate > len(rf.peers)/2
 // }
+// TODO poorly named. need greater than this number to have majority
+func (rf *Raft) majority() int {
+	return len(rf.peers) / 2
+}
+
+func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh chan<- struct{}, wonElectionCh chan<- struct{}) {
+	var votesReceived int
+
+	for range electionVotesCh {
+		votesReceived++
+		// TODO eventually setup leader data structures here
+		if votesReceived > majority {
+			// TODO should i close all this stuff if this peer loses election? or just let GC handle it?
+			close(electionDoneCh)
+			wonElectionCh <- struct{}{}
+		}
+	}
+}
+
 func (rf *Raft) beLeader() {
 	rf.currentState = leader
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
