@@ -152,7 +152,8 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	rf.voteCh <- struct{}{}
+	rf.voteCh <- struct{}{} // could this ever block?
+
 	reply.Term = rf.currentTerm
 
 	if args.Term < rf.currentTerm {
@@ -176,7 +177,7 @@ func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
 	case candidate.LastLogTerm > lastLogEntry.Term:
 		return true
 	case candidate.LastLogTerm == lastLogEntry.Term:
-		return candidate.LastLogIndex >= rf.lastApplied
+		return candidate.LastLogIndex >= rf.lastApplied // is lastApplied correct here?
 	case candidate.LastLogTerm < lastLogEntry.Term:
 		return false
 	default: // TODO need this?
@@ -257,6 +258,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// Your initialization code here.
 	rf.voteCh = make(chan struct{})
+
+	// TODO should i initialize raftState here? or just assume the beFollower() call below takes care of it?
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
