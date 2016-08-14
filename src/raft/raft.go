@@ -67,6 +67,9 @@ type Raft struct {
 	/* volatile state */
 	commitIndex int // index of highest log entry known to be committed
 	lastApplied int // index of highest log entry applied to state machine
+
+	// state channels
+	voteCh chan struct{}
 }
 
 func (rf *Raft) LastLogEntry() *LogEntry {
@@ -137,6 +140,7 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
+	rf.voteCh <- struct{}{}
 	reply.Term = rf.currentTerm
 
 	if args.Term < rf.currentTerm {
@@ -243,13 +247,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here.
-
-	// loop forever
-	// if timeout
-	// convert to candidate
-	// start election
-	// else
-	// 
+	rf.voteCh = make(chan struct{})
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
