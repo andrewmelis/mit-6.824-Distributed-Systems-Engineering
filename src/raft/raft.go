@@ -278,17 +278,18 @@ func Make(peers []*labrpc.ClientEnd, me int,
 }
 
 func (rf *Raft) beFollower() {
-	// TODO randomize each cycle or persist in struct?
-	electionTimeout := rand.Intn(150) + 150 // paper suggests timeout between 150ms - 300ms
-	fmt.Printf("electionTimeout for peer %d: %dms\n", rf.me, electionTimeout)
+	rf.currentState = follower
+	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
 	for {
 		select {
 		case <-rf.voteCh:
-			fmt.Printf("peer %d got a vote\n")
-		case <-time.After(time.Duration(electionTimeout) * time.Millisecond):
-			fmt.Printf("peer %d election timeout... convert to candidate\n", rf.me)
-			// convert to candidate
+			DPrintf("peer %d got a vote RPC\n", rf.me)
+		// case <- appendEntriesCh:
+		case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
+			DPrintf("peer %d election timeout... convert to candidate\n", rf.me)
+			go rf.beCandidate()
+			return
 		}
 	}
 }
