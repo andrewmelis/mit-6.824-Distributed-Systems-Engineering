@@ -254,14 +254,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
-	return rf
-}
 	go rf.beFollower()
 
-
-// func follower() {}
-
-// func candidate() {}
+	return rf
+}
 
 func (rf *Raft) beFollower() {
 	// TODO randomize each cycle or persist in struct?
@@ -278,6 +274,10 @@ func (rf *Raft) beFollower() {
 		}
 	}
 }
+
+// func follower() {}
+
+// func candidate() {}
 
 // func leader() {}
 
