@@ -299,3 +299,7 @@ func (rf *Raft) beFollower() {
 
 
 // }
+func (rf *Raft) beLeader() {
+	rf.currentState = leader
+	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
+}
