@@ -264,6 +264,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// Your initialization code here.
 	rf.voteCh = make(chan struct{})
 
+	rf.electionTimeout = rand.Intn(150) + 150 // paper suggests timeout between 150ms - 300ms
+	DPrintf("electionTimeout for peer %d: %dms\n", rf.me, rf.electionTimeout)
+
 	// TODO should i initialize raftState here? or just assume the beFollower() call below takes care of it?
 
 	// initialize from state persisted before a crash
