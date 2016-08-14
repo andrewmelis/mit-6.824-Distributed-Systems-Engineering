@@ -261,12 +261,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 // func leader() {}
 
-
-
 // func (rf *Raft) startElection() {
 // 	// rf.
 // 	args := RequestVoteArgs{Term: lakjsdf, CandidateId: , LastLogIndex: , LastLogTerm: }
-	
+
 // 	for i := range peers {
 // 		// send out RequestVote rpcs
 // 		sendRequestVote(i, args, &reply)
