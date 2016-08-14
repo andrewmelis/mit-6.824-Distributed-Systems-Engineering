@@ -58,7 +58,7 @@ type Raft struct {
 	currentTerm int // latest term server has seen
 
 	// TODO should votedFor be updated / nulled if vote for losing candidate?
-	votedFor int // candidateId (`me`) that received vote in current term
+	votedFor      int  // candidateId (`me`) that received vote in current term
 	votedThisTerm bool // can't null an int so must separate votedFor(id) && voted(bool)
 
 	// TODO spec says first index is 1 not zero...
@@ -83,7 +83,7 @@ func (rf *Raft) GetState() (int, bool) {
 	term = rf.currentTerm
 	// isLeader = rf.votedFor == rf.me // TODO does this always work?
 	isLeader = false
-	
+
 	return term, isLeader
 }
 
