@@ -42,6 +42,14 @@ type LogEntry struct {
 	Term    int
 }
 
+type raftState string
+
+const (
+	follower  raftState = "follower"
+	candidate           = "candidate"
+	leader              = "leader"
+)
+
 //
 // A Go object implementing a single Raft peer.
 //
@@ -69,7 +77,8 @@ type Raft struct {
 	commitIndex int // index of highest log entry known to be committed
 	lastApplied int // index of highest log entry applied to state machine
 
-	// state channels
+	currentState raftState
+
 	voteCh chan struct{}
 }
 
@@ -85,8 +94,10 @@ func (rf *Raft) GetState() (int, bool) {
 	var isLeader bool
 
 	term = rf.currentTerm
+
 	// isLeader = rf.votedFor == rf.me // TODO does this always work?
-	isLeader = false
+	// isLeader = false
+	isLeader = rf.currentState == leader
 
 	return term, isLeader
 }
