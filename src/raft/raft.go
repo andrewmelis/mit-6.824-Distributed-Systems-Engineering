@@ -19,7 +19,6 @@ package raft
 
 import "sync"
 import "labrpc"
-import "fmt"
 import "math/rand"
 import "time"
 
