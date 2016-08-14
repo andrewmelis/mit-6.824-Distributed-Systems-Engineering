@@ -149,8 +149,6 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 		return
 	}
 
-	fmt.Printf("findme: %t\n", rf.AtLeastAsUpToDate(args))
-
 	if rf.votedThisTerm == false || rf.votedFor == args.CandidateId && rf.AtLeastAsUpToDate(args) {
 		reply.VoteGranted = true
 	} else {
@@ -163,7 +161,6 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 // as defined at end of section 5.4.1
 func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
 	lastLogEntry := rf.LastLogEntry() // NOTE: this could be "zero" struct
-	fmt.Printf("%+v\n", lastLogEntry)
 	switch {
 	case candidate.LastLogTerm > lastLogEntry.Term:
 		return true
