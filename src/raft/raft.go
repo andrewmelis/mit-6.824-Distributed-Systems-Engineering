@@ -70,6 +70,8 @@ type Raft struct {
 	votedFor      int  // candidateId (`me`) that received vote in current term
 	votedThisTerm bool // can't null an int so must separate votedFor(id) && voted(bool)
 
+	electionTimeout int // needs to be static throughout life of peer(?)
+
 	// TODO spec says first index is 1 not zero...
 	log []LogEntry // array of pointers or structs
 
