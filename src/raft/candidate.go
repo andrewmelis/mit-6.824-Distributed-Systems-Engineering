@@ -10,8 +10,7 @@ func (rf *Raft) beCandidate() {
 	rf.currentState = candidate
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
-	rf.currentTerm++
-	DPrintf("peer %d increments its current term from %d to %d\n", rf.me, rf.currentTerm-1, rf.currentTerm)
+	rf.setTerm(rf.currentTerm + 1)
 
 	wonElectionCh := make(chan struct{})
 	go rf.startElection(wonElectionCh)
