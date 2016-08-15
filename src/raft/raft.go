@@ -39,11 +39,6 @@ type ApplyMsg struct {
 	Snapshot    []byte // ignore for lab2; only used in lab3
 }
 
-type LogEntry struct {
-	Command string
-	Term    int
-}
-
 type raftState string
 
 const (
@@ -87,13 +82,6 @@ type Raft struct {
 	// state channels
 	requestVoteCh   chan struct{}
 	appendEntriesCh chan struct{}
-}
-
-func (rf *Raft) lastLogEntry() *LogEntry {
-	if len(rf.log) == 0 {
-		return &LogEntry{}
-	}
-	return &rf.log[len(rf.log)-1] // TODO pointer or value?
 }
 
 // return currentTerm and whether this server
