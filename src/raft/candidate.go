@@ -16,7 +16,6 @@ func (rf *Raft) beCandidate() {
 	wonElectionCh := make(chan struct{})
 	go rf.startElection(wonElectionCh)
 
-	// for { // do i need this for? only happening once i think
 	select {
 	case <-wonElectionCh:
 		DPrintf("peer %d received winElection msg ... convert to leader\n", rf.me)
