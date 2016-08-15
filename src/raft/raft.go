@@ -48,6 +48,8 @@ const (
 	follower  raftState = "follower"
 	candidate           = "candidate"
 	leader              = "leader"
+
+	heartbeatTimeout time.Duration = 75 * time.Millisecond // half of minimum election timeout as specified in section 9.1
 )
 
 //
@@ -81,7 +83,9 @@ type Raft struct {
 
 	currentState raftState
 
-	voteCh chan struct{}
+	// state channels
+	requestVoteCh   chan struct{}
+	appendEntriesCh chan struct{}
 }
 
 func (rf *Raft) LastLogEntry() *LogEntry {
@@ -157,7 +161,7 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	rf.voteCh <- struct{}{} // could this ever block?
+	rf.requestVoteCh <- struct{}{} // could this ever block?
 
 	reply.Term = rf.currentTerm
 
@@ -212,6 +216,27 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 	return ok
 }
 
+type AppendEntriesArgs struct {
+	Term int
+}
+
+type AppendEntriesReply struct {
+}
+
+func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
+	rf.appendEntriesCh <- struct{}{}
+
+	if args.Term > rf.currentTerm {
+		rf.currentTerm = args.Term
+		return
+	}
+}
+
+func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *AppendEntriesReply) bool {
+	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+	return ok
+}
+
 //
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
@@ -262,7 +287,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here.
-	rf.voteCh = make(chan struct{})
+	rf.requestVoteCh = make(chan struct{})
+	rf.appendEntriesCh = make(chan struct{})
 
 	rf.electionTimeout = rand.Intn(150) + 150 // paper suggests timeout between 150ms - 300ms
 	DPrintf("electionTimeout for peer %d: %dms\n", rf.me, rf.electionTimeout)
@@ -283,9 +309,10 @@ func (rf *Raft) beFollower() {
 
 	for {
 		select {
-		case <-rf.voteCh:
-			DPrintf("peer %d got a vote RPC\n", rf.me)
-		// case <- appendEntriesCh:
+		case <-rf.requestVoteCh:
+			DPrintf("peer %d received a request vote RPC\n", rf.me)
+		case <-rf.appendEntriesCh:
+			DPrintf("peer %d received an append entries RPC\n", rf.me)
 		case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
 			DPrintf("peer %d election timeout... convert to candidate\n", rf.me)
 			go rf.beCandidate()
@@ -336,6 +363,10 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 	go electionWorker(electionVotesCh, rf.majority(), electionDoneCh, wonElectionCh)
 
 	for i := range rf.peers {
+		if i == rf.me {
+			continue
+		}
+
 		go func(peerIndex int) {
 			if ok := rf.sendRequestVote(peerIndex, args, &reply); !ok {
 				DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
@@ -374,6 +405,7 @@ func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh cha
 			// TODO should i close all this stuff if this peer loses election? or just let GC handle it?
 			close(electionDoneCh)
 			wonElectionCh <- struct{}{}
+			return
 		}
 	}
 }
@@ -381,4 +413,23 @@ func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh cha
 func (rf *Raft) beLeader() {
 	rf.currentState = leader
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
+
+	for {
+		select {
+		case <-time.After(heartbeatTimeout):
+			DPrintf("leader peer %d heartbeat timeout triggered, sending out empty AppendEntries rpcs...\n", rf.me)
+			for i := range rf.peers {
+				if i == rf.me {
+					continue
+				}
+
+				DPrintf("leader peer %d sending heartbeat AppendEntries rpc to peer %d\n", rf.me, i)
+				go rf.sendAppendEntries(i, AppendEntriesArgs{Term: rf.currentTerm}, &AppendEntriesReply{})
+				// if ok := rf.sendAppendEntries(peerIndex, args, &reply); !ok {
+				// 	DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
+				// 	return
+				// }
+			}
+		}
+	}
 }
