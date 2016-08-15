@@ -212,6 +212,7 @@ func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
 // the struct itself.
 //
 func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *RequestVoteReply) bool {
+	DPrintf("ELECTION: call to peer %d from candidate %d\n", server, args.CandidateId)
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
 }
@@ -363,8 +364,9 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 		}
 
 		go func(peerIndex int) {
+			DPrintf("candidate peer %d sending request vote rpc to peer %d\n", rf.me, peerIndex)
 			if ok := rf.sendRequestVote(peerIndex, args, &reply); !ok {
-				DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
+				DPrintf("sendRequestVote from candidate %d to peer %d failed\n", rf.me, peerIndex)
 				return
 			}
 
@@ -429,9 +431,11 @@ func (rf *Raft) beLeader() {
 				go func(peerIndex int) {
 					DPrintf("leader peer %d sending heartbeat AppendEntries rpc to peer %d\n", rf.me, peerIndex)
 					if ok := rf.sendAppendEntries(peerIndex, AppendEntriesArgs{Term: rf.currentTerm}, &AppendEntriesReply{}); !ok {
-						DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
+						DPrintf("sendAppendEntries rpc from leader peer %d to peer %d failed\n", rf.me, peerIndex)
 						// TODO: need to return here?
 					}
+
+					// TODO do some bookkeeping on peers and stuff
 				}(i)
 			}
 		}
