@@ -69,8 +69,7 @@ type Raft struct {
 	currentTerm int // latest term server has seen
 
 	// TODO should votedFor be updated / nulled if vote for losing candidate?
-	votedFor      int  // candidateId (`me`) that received vote in current term
-	votedThisTerm bool // can't null an int so must separate votedFor(id) && voted(bool)
+	votedFor int // candidateId (`me`) that received vote in current term
 
 	electionTimeout int // needs to be static throughout life of peer(?)
 
@@ -161,20 +160,33 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	rf.requestVoteCh <- struct{}{} // could this ever block?
+	DPrintf("ELECTION: peer %d is in state %s, received RequestVote rpc from peer %d\n", rf.me, rf.currentState, args.CandidateId)
+
+	switch {
+	case args.Term < rf.currentTerm:
+		reply.VoteGranted = false
+		DPrintf("ELECTION: peer %d sends failing RequestVoteRepl bc args.term %d < currentTerm %d\n", rf.me, args.Term, rf.currentTerm)
+
+		return
+	case args.Term > rf.currentTerm:
+		rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
+	}
 
 	reply.Term = rf.currentTerm
 
-	if args.Term < rf.currentTerm {
-		reply.VoteGranted = false
-		return
-	}
-
-	if rf.votedThisTerm == false || rf.votedFor == args.CandidateId && rf.AtLeastAsUpToDate(args) {
+	if rf.votedFor == -1 || rf.votedFor == args.CandidateId && rf.AtLeastAsUpToDate(args) {
 		reply.VoteGranted = true
+		rf.votedFor = args.CandidateId
 	} else {
 		reply.VoteGranted = false
 	}
+
+	// TODO move me somewhere else
+	if reply.VoteGranted {
+		rf.requestVoteCh <- struct{}{}
+	}
+
+	DPrintf("ELECTION: peer %d sends RequestVoteRepl %+v\n", rf.me, reply)
 }
 
 // TODO is there an official compare interface?
@@ -224,12 +236,29 @@ type AppendEntriesArgs struct {
 type AppendEntriesReply struct {
 }
 
-func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.appendEntriesCh <- struct{}{}
+func (rf *Raft) setTerm(newTerm int) {
+	DPrintf("peer %d sets term to %d\n", rf.me, newTerm)
+	rf.currentTerm = newTerm
+	rf.votedFor = -1 // always set back to null?
+}
 
-	if args.Term > rf.currentTerm {
-		rf.currentTerm = args.Term
-		return
+func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
+	var shouldNotify bool
+
+	switch {
+	case args.Term > rf.currentTerm:
+		rf.setTerm(args.Term)
+		shouldNotify = true
+	case args.Term == rf.currentTerm && rf.currentState == leader:
+		shouldNotify = false
+	case args.Term == rf.currentTerm && rf.currentState != leader: // better style to put if/else inside single case, or have minor duplication here?
+		shouldNotify = true // figured should be explicit about all cases rather than implict true default
+	case args.Term < rf.currentTerm:
+		shouldNotify = false
+	}
+
+	if shouldNotify {
+		rf.appendEntriesCh <- struct{}{}
 	}
 }
 
@@ -288,6 +317,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here.
+	rf.votedFor = -1
 	rf.requestVoteCh = make(chan struct{})
 	rf.appendEntriesCh = make(chan struct{})
 
@@ -323,6 +353,8 @@ func (rf *Raft) beFollower() {
 }
 
 func (rf *Raft) beCandidate() {
+	rf.requestVoteCh = make(chan struct{}) // TODO HACK
+
 	rf.currentState = candidate
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
@@ -332,18 +364,20 @@ func (rf *Raft) beCandidate() {
 	wonElectionCh := make(chan struct{})
 	go rf.startElection(wonElectionCh)
 
-	for {
-		select {
-		case <-wonElectionCh:
-			DPrintf("peer %d received winElection msg ... convert to leader\n", rf.me)
-			go rf.beLeader()
-			return
-		// case <- appendEntriesCh:
-		case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
-			DPrintf("peer %d election timeout... convert to candidate\n", rf.me)
-			go rf.beCandidate()
-			return
-		}
+	// for { // do i need this for? only happening once i think
+	select {
+	case <-wonElectionCh:
+		DPrintf("peer %d received winElection msg ... convert to leader\n", rf.me)
+		go rf.beLeader()
+	case <-rf.appendEntriesCh:
+		DPrintf("peer %d received appendEntries msg ... convert to follower\n", rf.me)
+		go rf.beFollower()
+	case <-rf.requestVoteCh:
+		DPrintf("peer %d received requestVote msg ... convert to follower\n", rf.me)
+		go rf.beFollower()
+	case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
+		DPrintf("peer %d election timeout during election... convert to candidate\n", rf.me)
+		go rf.beCandidate()
 	}
 }
 
@@ -385,7 +419,6 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 
 func (rf *Raft) voteForSelf(electionVotesCh chan<- int) {
 	rf.votedFor = rf.me
-	rf.votedThisTerm = true
 	electionVotesCh <- rf.me // bookkeeping for self
 	DPrintf("peer %d votes for self\n", rf.me)
 }
@@ -421,6 +454,11 @@ func (rf *Raft) beLeader() {
 
 	for {
 		select {
+		case <-rf.appendEntriesCh:
+			DPrintf("peer %d received appendEntries msg ... convert to follower\n", rf.me)
+			go rf.beFollower()
+			return
+		// case <- call from client:
 		case <-time.After(heartbeatTimeout):
 			DPrintf("leader peer %d heartbeat timeout triggered, sending out empty AppendEntries rpcs...\n", rf.me)
 			for i := range rf.peers {
