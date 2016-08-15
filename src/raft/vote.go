@@ -55,7 +55,7 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 // returns true if candidate is "at least as up-to-date"
 // as defined at end of section 5.4.1
 func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
-	lastLogEntry := rf.LastLogEntry() // NOTE: this could be "zero" struct
+	lastLogEntry := rf.lastLogEntry() // NOTE: this could be "zero" struct
 	switch {
 	case candidate.LastLogTerm > lastLogEntry.Term:
 		return true

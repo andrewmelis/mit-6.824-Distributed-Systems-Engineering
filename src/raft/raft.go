@@ -89,7 +89,7 @@ type Raft struct {
 	appendEntriesCh chan struct{}
 }
 
-func (rf *Raft) LastLogEntry() *LogEntry {
+func (rf *Raft) lastLogEntry() *LogEntry {
 	if len(rf.log) == 0 {
 		return &LogEntry{}
 	}
