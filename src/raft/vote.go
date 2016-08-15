@@ -22,13 +22,9 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	DPrintf("ELECTION: peer %d is in state %s, received RequestVote rpc from peer %d\n", rf.me, rf.currentState, args.CandidateId)
-
 	switch {
 	case args.Term < rf.currentTerm:
 		reply.VoteGranted = false
-		DPrintf("ELECTION: peer %d sends failing RequestVoteRepl bc args.term %d < currentTerm %d\n", rf.me, args.Term, rf.currentTerm)
-
 		return
 	case args.Term > rf.currentTerm:
 		rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
@@ -47,8 +43,6 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	if reply.VoteGranted {
 		rf.requestVoteCh <- struct{}{}
 	}
-
-	DPrintf("ELECTION: peer %d sends RequestVoteRepl %+v\n", rf.me, reply)
 }
 
 // TODO is there an official compare interface?
@@ -86,7 +80,6 @@ func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
 // the struct itself.
 //
 func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *RequestVoteReply) bool {
-	DPrintf("ELECTION: call to peer %d from candidate %d\n", server, args.CandidateId)
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
 }

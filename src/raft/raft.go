@@ -129,7 +129,6 @@ func (rf *Raft) readPersist(data []byte) {
 }
 
 func (rf *Raft) setTerm(newTerm int) {
-	DPrintf("peer %d sets term to %d\n", rf.me, newTerm)
 	rf.currentTerm = newTerm
 	rf.votedFor = -1 // always set back to null?
 }
@@ -189,7 +188,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.appendEntriesCh = make(chan struct{})
 
 	rf.electionTimeout = rand.Intn(150) + 150 // paper suggests timeout between 150ms - 300ms
-	DPrintf("electionTimeout for peer %d: %dms\n", rf.me, rf.electionTimeout)
 
 	// TODO should i initialize raftState here? or just assume the beFollower() call below takes care of it?
 

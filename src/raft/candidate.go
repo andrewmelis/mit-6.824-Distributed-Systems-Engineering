@@ -8,6 +8,7 @@ func (rf *Raft) beCandidate() {
 	rf.requestVoteCh = make(chan struct{}) // TODO HACK
 
 	rf.currentState = candidate
+
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
 	rf.setTerm(rf.currentTerm + 1)
@@ -17,23 +18,17 @@ func (rf *Raft) beCandidate() {
 
 	select {
 	case <-wonElectionCh:
-		DPrintf("peer %d received winElection msg ... convert to leader\n", rf.me)
 		go rf.beLeader()
 	case <-rf.appendEntriesCh:
-		DPrintf("peer %d received appendEntries msg ... convert to follower\n", rf.me)
 		go rf.beFollower()
 	case <-rf.requestVoteCh:
-		DPrintf("peer %d received requestVote msg ... convert to follower\n", rf.me)
 		go rf.beFollower()
 	case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
-		DPrintf("peer %d election timeout during election... convert to candidate\n", rf.me)
 		go rf.beCandidate()
 	}
 }
 
 func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
-	DPrintf("peer %d starts election\n", rf.me)
-
 	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: rf.lastLogEntry().Term, LastLogTerm: rf.lastApplied}
 	reply := RequestVoteReply{}
 
@@ -48,18 +43,15 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 		}
 
 		go func(peerIndex int) {
-			DPrintf("candidate peer %d sending request vote rpc to peer %d\n", rf.me, peerIndex)
 			if ok := rf.sendRequestVote(peerIndex, args, &reply); !ok {
-				DPrintf("sendRequestVote from candidate %d to peer %d failed\n", rf.me, peerIndex)
 				return
 			}
 
 			if reply.VoteGranted {
 				select {
 				case <-electionDoneCh:
-					DPrintf("election finished before peer %d sent in vote\n", peerIndex)
-				case electionVotesCh <- peerIndex: // can't just always send this because sending on a closed ch will block forever
-					DPrintf("peer %d votes for peer %d\n", peerIndex, rf.me)
+					return
+				case electionVotesCh <- peerIndex:
 					// TODO bookkeeping with term of replying server
 				}
 			}
@@ -69,8 +61,7 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 
 func (rf *Raft) voteForSelf(electionVotesCh chan<- int) {
 	rf.votedFor = rf.me
-	electionVotesCh <- rf.me // bookkeeping for self
-	DPrintf("peer %d votes for self\n", rf.me)
+	electionVotesCh <- rf.me
 }
 
 // TODO find a way to use this instead of passing in poorly named int
@@ -88,7 +79,6 @@ func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh cha
 	for range electionVotesCh {
 		votesReceived++
 		// TODO eventually setup leader data structures here
-		DPrintf("candidate has now received %d votes\n", votesReceived)
 		if votesReceived > majority {
 			// TODO should i close all this stuff if this peer loses election? or just let GC handle it?
 			close(electionDoneCh)
