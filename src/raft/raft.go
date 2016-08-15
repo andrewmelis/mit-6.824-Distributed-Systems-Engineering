@@ -424,12 +424,13 @@ func (rf *Raft) beLeader() {
 					continue
 				}
 
-				DPrintf("leader peer %d sending heartbeat AppendEntries rpc to peer %d\n", rf.me, i)
-				go rf.sendAppendEntries(i, AppendEntriesArgs{Term: rf.currentTerm}, &AppendEntriesReply{})
-				// if ok := rf.sendAppendEntries(peerIndex, args, &reply); !ok {
-				// 	DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
-				// 	return
-				// }
+				go func(peerIndex int) {
+					DPrintf("leader peer %d sending heartbeat AppendEntries rpc to peer %d\n", rf.me, peerIndex)
+					if ok := rf.sendAppendEntries(peerIndex, AppendEntriesArgs{Term: rf.currentTerm}, &AppendEntriesReply{}); !ok {
+						DPrintf("sendRequestVote to peer %d failed\n", peerIndex)
+						// TODO: need to return here?
+					}
+				}(i)
 			}
 		}
 	}
