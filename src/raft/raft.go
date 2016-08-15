@@ -326,7 +326,6 @@ func (rf *Raft) beCandidate() {
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
 	rf.currentTerm++
-	rf.voteForSelf()
 
 	wonElectionCh := make(chan struct{})
 	go rf.startElection(wonElectionCh)
@@ -346,12 +345,6 @@ func (rf *Raft) beCandidate() {
 	}
 }
 
-func (rf *Raft) voteForSelf() {
-	rf.votedFor = rf.me
-	rf.votedThisTerm = true
-	DPrintf("peer %d votes for self\n", rf.me)
-}
-
 func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 	DPrintf("peer %d starts election\n", rf.me)
 
@@ -364,6 +357,7 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 
 	for i := range rf.peers {
 		if i == rf.me {
+			rf.voteForSelf(electionVotesCh)
 			continue
 		}
 
@@ -384,6 +378,13 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 			}
 		}(i)
 	}
+}
+
+func (rf *Raft) voteForSelf(electionVotesCh chan<- int) {
+	rf.votedFor = rf.me
+	rf.votedThisTerm = true
+	electionVotesCh <- rf.me // bookkeeping for self
+	DPrintf("peer %d votes for self\n", rf.me)
 }
 
 // TODO find a way to use this instead of passing in poorly named int
