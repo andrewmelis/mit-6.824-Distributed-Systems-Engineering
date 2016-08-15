@@ -326,6 +326,7 @@ func (rf *Raft) beCandidate() {
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
 	rf.currentTerm++
+	DPrintf("peer %d increments its current term from %d to %d\n", rf.me, rf.currentTerm-1, rf.currentTerm)
 
 	wonElectionCh := make(chan struct{})
 	go rf.startElection(wonElectionCh)
@@ -402,6 +403,7 @@ func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh cha
 	for range electionVotesCh {
 		votesReceived++
 		// TODO eventually setup leader data structures here
+		DPrintf("candidate has now received %d votes\n", votesReceived)
 		if votesReceived > majority {
 			// TODO should i close all this stuff if this peer loses election? or just let GC handle it?
 			close(electionDoneCh)
