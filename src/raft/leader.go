@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+const (
+	heartbeatTimeout time.Duration = 75 * time.Millisecond // half of minimum election timeout as specified in section 9.1
+)
+
 func (rf *Raft) beLeader() {
 	rf.currentState = leader
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)

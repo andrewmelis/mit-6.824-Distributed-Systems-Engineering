@@ -21,7 +21,6 @@ import (
 	"labrpc"
 	"math/rand"
 	"sync"
-	"time"
 )
 
 // import "bytes"
@@ -45,8 +44,6 @@ const (
 	follower  raftState = "follower"
 	candidate           = "candidate"
 	leader              = "leader"
-
-	heartbeatTimeout time.Duration = 75 * time.Millisecond // half of minimum election timeout as specified in section 9.1
 )
 
 //
