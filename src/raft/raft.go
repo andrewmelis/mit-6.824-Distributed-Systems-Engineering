@@ -151,6 +151,10 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	term := -1
 	isLeader := false
 
+	if rf.currentState != leader {
+		return index, term, isLeader
+	}
+
 	return index, term, isLeader
 }
 
