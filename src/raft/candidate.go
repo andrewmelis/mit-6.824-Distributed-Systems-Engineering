@@ -27,12 +27,11 @@ func (rf *Raft) beCandidate() {
 	}
 }
 
-func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
+func (rf *Raft) startElection(wonElectionCh chan struct{}) {
 	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: rf.lastLogEntry().Term, LastLogTerm: rf.lastApplied}
 	reply := RequestVoteReply{}
 
 	electionVotesCh := make(chan int)
-	electionDoneCh := make(chan struct{})
 	go electionWorker(electionVotesCh, rf.majority(), electionDoneCh, wonElectionCh)
 
 	for i := range rf.peers {
@@ -48,7 +47,7 @@ func (rf *Raft) startElection(wonElectionCh chan<- struct{}) {
 
 			if reply.VoteGranted {
 				select {
-				case <-electionDoneCh:
+				case <-wonElectionCh: // way to do this without an extra channel?
 					return
 				case electionVotesCh <- peerIndex:
 					// TODO bookkeeping with term of replying server
@@ -80,8 +79,7 @@ func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh cha
 		// TODO eventually setup leader data structures here
 		if votesReceived > majority {
 			// TODO should i close all this stuff if this peer loses election? or just let GC handle it?
-			close(electionDoneCh)
-			wonElectionCh <- struct{}{}
+			close(wonElectionCh)
 			return
 		}
 	}
