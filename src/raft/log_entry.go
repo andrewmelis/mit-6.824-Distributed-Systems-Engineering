@@ -3,6 +3,7 @@ package raft
 type LogEntry struct {
 	Command string
 	Term    int
+	// Index int // include this here? or rely on log index?
 }
 
 func (rf *Raft) lastLogEntry() *LogEntry {

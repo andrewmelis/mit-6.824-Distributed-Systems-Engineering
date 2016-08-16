@@ -152,6 +152,12 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		return index, term, isLeader
 	}
 
+	index = len(rf.log) // highest index + 1
+	term = rf.currentTerm
+	isLeader = true
+
+	go replicateLog(command)
+
 	return index, term, isLeader
 }
 

@@ -8,12 +8,11 @@ func (rf *Raft) beCandidate() {
 	rf.requestVoteCh = make(chan struct{}) // TODO HACK
 
 	rf.currentState = candidate
-
+	rf.setTerm(rf.currentTerm + 1)
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
-	rf.setTerm(rf.currentTerm + 1)
-
 	wonElectionCh := make(chan struct{})
+
 	go rf.startElection(wonElectionCh)
 
 	select {
