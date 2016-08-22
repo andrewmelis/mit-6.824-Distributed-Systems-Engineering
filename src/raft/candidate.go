@@ -32,7 +32,7 @@ func (rf *Raft) startElection(wonElectionCh chan struct{}) {
 	reply := RequestVoteReply{}
 
 	electionVotesCh := make(chan int)
-	go electionWorker(electionVotesCh, rf.majority(), electionDoneCh, wonElectionCh)
+	go electionWorker(electionVotesCh, rf.majority(), wonElectionCh)
 
 	for i := range rf.peers {
 		if i == rf.me {
@@ -71,7 +71,7 @@ func (rf *Raft) majority() int {
 	return len(rf.peers) / 2
 }
 
-func electionWorker(electionVotesCh <-chan int, majority int, electionDoneCh chan<- struct{}, wonElectionCh chan<- struct{}) {
+func electionWorker(electionVotesCh <-chan int, majority int, wonElectionCh chan<- struct{}) {
 	var votesReceived int
 
 	for range electionVotesCh {
