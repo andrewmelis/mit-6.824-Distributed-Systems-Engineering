@@ -1,9 +1,5 @@
 package raft
 
-import (
-	"time"
-)
-
 func (rf *Raft) beCandidate() {
 	rf.requestVoteCh = make(chan struct{}) // TODO HACK
 
@@ -16,18 +12,22 @@ func (rf *Raft) beCandidate() {
 	go rf.startElection(wonElectionCh)
 
 	select {
+	case <-rf.stateChangeCh:
+		DPrintf("peer %d election timed out while candidate\n", rf.me)
 	case <-wonElectionCh:
+		rf.resetCh <- struct{}{}
 		go rf.beLeader()
 	case <-rf.appendEntriesCh:
+		rf.resetCh <- struct{}{}
 		go rf.beFollower()
 	case <-rf.requestVoteCh:
+		rf.resetCh <- struct{}{}
 		go rf.beFollower()
-	case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
-		go rf.beCandidate()
 	}
 }
 
 func (rf *Raft) startElection(wonElectionCh chan struct{}) {
+	DPrintf("peer %d starting election\n", rf.me)
 	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: rf.lastLogEntry().Term, LastLogTerm: rf.lastApplied}
 	reply := RequestVoteReply{}
 

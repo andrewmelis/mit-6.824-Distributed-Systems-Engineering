@@ -15,10 +15,12 @@ func (rf *Raft) beLeader() {
 	for {
 		select {
 		case <-rf.appendEntriesCh:
+			rf.resetCh <- struct{}{}
 			go rf.beFollower()
 			return
 		// case <- call from client:
 		case <-time.After(heartbeatTimeout):
+			rf.resetCh <- struct{}{}
 			for i := range rf.peers {
 				if i == rf.me {
 					continue

@@ -21,6 +21,7 @@ import (
 	"labrpc"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 // import "bytes"
@@ -75,6 +76,9 @@ type Raft struct {
 	lastApplied int // index of highest log entry applied to state machine
 
 	currentState raftState
+
+	resetCh       chan struct{}
+	stateChangeCh chan struct{} // TODO this is ugly
 
 	// state channels
 	requestVoteCh   chan struct{}
@@ -191,6 +195,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// Your initialization code here.
 	rf.votedFor = -1
+	rf.resetCh = make(chan struct{})
+	rf.stateChangeCh = make(chan struct{})
 	rf.requestVoteCh = make(chan struct{})
 	rf.appendEntriesCh = make(chan struct{})
 
@@ -202,6 +208,21 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.readPersist(persister.ReadRaftState())
 
 	go rf.beFollower()
+	go rf.manageTimeout()
 
 	return rf
+}
+
+func (rf *Raft) manageTimeout() {
+	for {
+		select {
+		case <-rf.resetCh:
+			DPrintf("peer %d don't timeout. current state: %s\n", rf.me, rf.currentState)
+			continue
+		case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
+			DPrintf("peer %d election timeout... convert to candidate\n", rf.me)
+			rf.stateChangeCh <- struct{}{} // TODO how else to close state logic for?
+			go rf.beCandidate()            // always convert to candidat here. possibly abstract to something like `advance`
+		}
+	}
 }
