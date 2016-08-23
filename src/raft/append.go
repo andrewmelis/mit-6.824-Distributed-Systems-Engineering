@@ -1,30 +1,69 @@
 package raft
 
 type AppendEntriesArgs struct {
-	Term int
+	Term         int
+	LeaderId     int
+	Entries      []LogEntry
+	LeaderCommit int
 }
 
 type AppendEntriesReply struct {
+	Term    int
+	Success bool
 }
 
 func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
-	var shouldNotify bool
+	reply.Term = rf.currentTerm
+	DPrintf("peer %d received append RPC %+v\n", rf.me, args)
 
 	switch {
 	case args.Term > rf.currentTerm:
+		reply.Success = true
 		rf.setTerm(args.Term)
-		shouldNotify = true
 	case args.Term == rf.currentTerm && rf.currentState == leader:
-		shouldNotify = false
+		reply.Success = false
 	case args.Term == rf.currentTerm && rf.currentState != leader: // better style to put if/else inside single case, or have minor duplication here?
-		shouldNotify = true // figured should be explicit about all cases rather than implict true default
+		reply.Success = true // figured should be explicit about all cases rather than implict true default
 	case args.Term < rf.currentTerm:
-		shouldNotify = false
+		reply.Success = false
 	}
 
-	if shouldNotify {
+	if reply.Success {
+		// rf.appendEntriesCh <- struct{}{} // TODO can't do this here or else two "copies running at once"!!!!!
+		// delete conflicting entries (pg 4, append step #4)
+		// for i:= // TODO make sure only "new" entries are appended
+		DPrintf("peer %d log before appends: %+v\n", rf.me, rf.log)
+		for _, entry := range args.Entries {
+			rf.log = append(rf.log, entry)
+		}
+		DPrintf("peer %d log after appends: %+v\n", rf.me, rf.log)
+
+		// reset commitIndex
+		if args.LeaderCommit > rf.commitIndex {
+			rf.commitIndex = min(args.LeaderCommit, len(rf.log)-1)
+			DPrintf("peer %d commit index = %d (and leader commit = %d)\n", rf.me, rf.commitIndex, args.LeaderCommit)
+		}
+	}
+
+	// extract
+	for rf.commitIndex > rf.lastApplied {
+		rf.lastApplied++
+		applyMsg := ApplyMsg{Index: rf.lastApplied, Command: rf.log[rf.lastApplied].Command}
+		rf.applyCh <- applyMsg
+		DPrintf("peer %d applied msg: %+v.\n\t commit index: %d, lastApplied: %d\n", rf.me, applyMsg, rf.commitIndex, rf.lastApplied)
+	}
+
+	if reply.Success {
 		rf.appendEntriesCh <- struct{}{}
 	}
+
+}
+
+func min(x, y int) int {
+	if x > y {
+		return y
+	}
+	return x
 }
 
 func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *AppendEntriesReply) bool {

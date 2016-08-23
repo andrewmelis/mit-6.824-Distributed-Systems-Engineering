@@ -13,6 +13,7 @@ func (rf *Raft) beLeader() {
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
 	for {
+		DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 		select {
 		case <-rf.appendEntriesCh:
 			rf.resetCh <- struct{}{}
@@ -27,7 +28,8 @@ func (rf *Raft) beLeader() {
 				}
 
 				go func(peerIndex int) {
-					if ok := rf.sendAppendEntries(peerIndex, AppendEntriesArgs{Term: rf.currentTerm}, &AppendEntriesReply{}); !ok {
+					args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, Entries: []LogEntry{}, LeaderCommit: rf.commitIndex}
+					if ok := rf.sendAppendEntries(peerIndex, args, &AppendEntriesReply{}); !ok {
 						// TODO: need to return here?
 					}
 
