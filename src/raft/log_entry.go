@@ -1,7 +1,7 @@
 package raft
 
 type LogEntry struct {
-	Command string
+	Command interface{}
 	Term    int
 	// Index int // include this here? or rely on log index?
 }
