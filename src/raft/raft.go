@@ -134,6 +134,15 @@ func (rf *Raft) setTerm(newTerm int) {
 	rf.votedFor = -1 // always set back to null?
 }
 
+// TODO find a way to use this instead of passing in poorly named int
+// func (rf *Raft) majority(candidate int) bool {
+// 	return candidate > len(rf.peers)/2
+// }
+// TODO poorly named. need greater than this number to have majority
+func (rf *Raft) majority() int {
+	return len(rf.peers) / 2
+}
+
 //
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this

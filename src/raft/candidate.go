@@ -62,15 +62,6 @@ func (rf *Raft) voteForSelf(electionVotesCh chan<- int) {
 	electionVotesCh <- rf.me
 }
 
-// TODO find a way to use this instead of passing in poorly named int
-// func (rf *Raft) majority(candidate int) bool {
-// 	return candidate > len(rf.peers)/2
-// }
-// TODO poorly named. need greater than this number to have majority
-func (rf *Raft) majority() int {
-	return len(rf.peers) / 2
-}
-
 func electionWorker(electionVotesCh <-chan int, majority int, wonElectionCh chan<- struct{}) {
 	var votesReceived int
 
