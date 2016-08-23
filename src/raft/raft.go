@@ -83,6 +83,8 @@ type Raft struct {
 	// state channels
 	requestVoteCh   chan struct{}
 	appendEntriesCh chan struct{}
+
+	applyCh chan ApplyMsg
 }
 
 // return currentTerm and whether this server
@@ -165,11 +167,12 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		return index, term, isLeader
 	}
 
-	// index = len(rf.log) // highest index + 1
-	// term = rf.currentTerm
-	// isLeader = true
+	index = len(rf.log) 
+	term = rf.currentTerm
+	isLeader = true
 
-	// go replicateLog(command)
+	go rf.replicateLog(command)
+	DPrintf("should return at index %d\n", index)
 
 	return index, term, isLeader
 }
@@ -203,7 +206,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here.
+	rf.commitIndex = -1
+	rf.lastApplied = -1
 	rf.votedFor = -1
+	rf.applyCh = applyCh
 	rf.resetCh = make(chan struct{})
 	rf.stateChangeCh = make(chan struct{})
 	rf.requestVoteCh = make(chan struct{})
