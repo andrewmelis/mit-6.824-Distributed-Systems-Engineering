@@ -172,7 +172,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader = true
 
 	go rf.replicateLog(command)
-	DPrintf("should return at index %d\n", index)
 
 	return index, term, isLeader
 }
@@ -232,7 +231,6 @@ func (rf *Raft) manageTimeout() {
 	for {
 		select {
 		case <-rf.resetCh:
-			DPrintf("peer %d don't timeout. current state: %s\n", rf.me, rf.currentState)
 			continue
 		case <-time.After(time.Duration(rf.electionTimeout) * time.Millisecond):
 			DPrintf("peer %d election timeout... convert to candidate\n", rf.me)

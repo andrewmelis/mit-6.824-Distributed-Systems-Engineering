@@ -13,7 +13,6 @@ func (rf *Raft) beLeader() {
 	DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 
 	for {
-		DPrintf("peer %d raftState: %v\n", rf.me, rf.currentState)
 		select {
 		case <-rf.appendEntriesCh:
 			rf.resetCh <- struct{}{}

@@ -29,10 +29,9 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	}
 
 	if reply.Success {
-		// rf.appendEntriesCh <- struct{}{} // TODO can't do this here or else two "copies running at once"!!!!!
 		// delete conflicting entries (pg 4, append step #4)
+
 		// for i:= // TODO make sure only "new" entries are appended
-		DPrintf("peer %d log before appends: %+v\n", rf.me, rf.log)
 		for _, entry := range args.Entries {
 			rf.log = append(rf.log, entry)
 		}
