@@ -40,7 +40,7 @@ func (rf *Raft) replicate(command interface{}, doneCh chan struct{}) {
 			reply := AppendEntriesReply{}
 			if ok := rf.sendAppendEntries(peerIndex, args, &reply); !ok {
 				// need to retry here or something?
-				DPrintf("append RPC from leader %d to peer %d failed!\n", rf.me, i)
+				DPrintf("append RPC from leader %d to peer %d failed!\n", rf.me, peerIndex)
 			}
 
 			if reply.Success { // TODO push this down to just `peerConfirmationCh <- reply` ???
