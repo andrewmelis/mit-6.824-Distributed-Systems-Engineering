@@ -167,7 +167,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		return index, term, isLeader
 	}
 
-	index = len(rf.log) 
+	index = rf.commitIndex + 1
 	term = rf.currentTerm
 	isLeader = true
 
@@ -205,8 +205,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here.
-	rf.commitIndex = -1
-	rf.lastApplied = -1
+	rf.commitIndex = 0
+	rf.lastApplied = 0
 	rf.votedFor = -1
 	rf.applyCh = applyCh
 	rf.resetCh = make(chan struct{})

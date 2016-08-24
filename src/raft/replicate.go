@@ -15,7 +15,7 @@ func (rf *Raft) replicateLog(command interface{}) {
 	// extract
 	for rf.commitIndex > rf.lastApplied {
 		rf.lastApplied++
-		applyMsg := ApplyMsg{Index: rf.lastApplied, Command: rf.log[rf.lastApplied].Command}
+		applyMsg := ApplyMsg{Index: rf.lastApplied, Command: rf.log[rf.lastApplied-1].Command}
 		rf.applyCh <- applyMsg
 		DPrintf("peer %d applied msg: %+v\n", rf.me, applyMsg)
 	}

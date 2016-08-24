@@ -39,7 +39,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 
 		// reset commitIndex
 		if args.LeaderCommit > rf.commitIndex {
-			rf.commitIndex = min(args.LeaderCommit, len(rf.log)-1)
+			rf.commitIndex = min(args.LeaderCommit, len(rf.log))
 			DPrintf("peer %d commit index = %d (and leader commit = %d)\n", rf.me, rf.commitIndex, args.LeaderCommit)
 		}
 	}
@@ -47,7 +47,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	// extract
 	for rf.commitIndex > rf.lastApplied {
 		rf.lastApplied++
-		applyMsg := ApplyMsg{Index: rf.lastApplied, Command: rf.log[rf.lastApplied].Command}
+		applyMsg := ApplyMsg{Index: rf.lastApplied, Command: rf.log[rf.lastApplied-1].Command}
 		rf.applyCh <- applyMsg
 		DPrintf("peer %d applied msg: %+v.\n\t commit index: %d, lastApplied: %d\n", rf.me, applyMsg, rf.commitIndex, rf.lastApplied)
 	}
