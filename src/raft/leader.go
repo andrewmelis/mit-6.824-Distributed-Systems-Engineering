@@ -18,6 +18,10 @@ func (rf *Raft) beLeader() {
 			rf.resetCh <- struct{}{}
 			go rf.beFollower()
 			return
+		case <-rf.requestVoteCh:
+			rf.resetCh <- struct{}{}
+			go rf.beFollower()
+			return
 		case <-rf.clientRequestCh:
 			rf.resetCh <- struct{}{}
 		case <-time.After(heartbeatTimeout):
