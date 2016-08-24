@@ -80,9 +80,10 @@ type Raft struct {
 	resetCh       chan struct{}
 	stateChangeCh chan struct{} // TODO this is ugly
 
-	// state channels
+	// rpc channels
 	requestVoteCh   chan struct{}
 	appendEntriesCh chan struct{}
+	clientRequestCh chan struct{}
 
 	applyCh chan ApplyMsg
 }
@@ -211,8 +212,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applyCh = applyCh
 	rf.resetCh = make(chan struct{})
 	rf.stateChangeCh = make(chan struct{})
+
 	rf.requestVoteCh = make(chan struct{})
 	rf.appendEntriesCh = make(chan struct{})
+	rf.clientRequestCh = make(chan struct{})
 
 	rf.electionTimeout = rand.Intn(150) + 150 // paper suggests timeout between 150ms - 300ms
 

@@ -18,7 +18,8 @@ func (rf *Raft) beLeader() {
 			rf.resetCh <- struct{}{}
 			go rf.beFollower()
 			return
-		// case <- call from client:
+		case <-rf.clientRequestCh:
+			rf.resetCh <- struct{}{}
 		case <-time.After(heartbeatTimeout):
 			rf.resetCh <- struct{}{}
 			for i := range rf.peers {

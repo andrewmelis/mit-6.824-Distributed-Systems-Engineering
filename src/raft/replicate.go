@@ -5,6 +5,7 @@ func (rf *Raft) replicateLog(command interface{}) {
 	doneCh := make(chan struct{})
 
 	go rf.replicate(command, doneCh) // push go down to replicate, or go here?
+	rf.clientRequestCh <- struct{}{}
 
 	<-doneCh // block until replicated. IRL probably timeout
 	DPrintf("leader %d successfully replicated command %v\n", rf.me, command)
