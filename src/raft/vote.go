@@ -32,7 +32,7 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 
 	reply.Term = rf.currentTerm
 
-	if rf.votedFor == -1 || rf.votedFor == args.CandidateId && rf.AtLeastAsUpToDate(args) {
+	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
 		reply.VoteGranted = true
 		rf.votedFor = args.CandidateId
 	} else {
