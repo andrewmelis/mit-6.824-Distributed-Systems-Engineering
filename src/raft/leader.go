@@ -31,10 +31,11 @@ func (rf *Raft) beLeader() {
 		case <-time.After(heartbeatTimeout):
 			rf.resetCh <- struct{}{}
 			for i := range rf.peers {
-				DPrintf("leader peer %d sending heartbeat\n", rf.me)
 				if i == rf.me {
 					continue
 				}
+
+				DPrintf("leader peer %d sending heartbeat to peer %d\n", rf.me, i)
 
 				go func(peerIndex int) {
 					prevLogIndex := rf.nextIndex[peerIndex] - 1
