@@ -40,9 +40,9 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	// TODO move me somewhere else
-	if reply.VoteGranted {
-		rf.requestVoteCh <- struct{}{}
-	}
+	// if reply.VoteGranted {
+	rf.requestVoteCh <- struct{}{}
+	// }
 }
 
 // TODO is there an official compare interface?
