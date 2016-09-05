@@ -3,6 +3,8 @@ package raft
 type AppendEntriesArgs struct {
 	Term         int
 	LeaderId     int
+	PrevLogIndex int
+	PrevLogTerm  int
 	Entries      []LogEntry
 	LeaderCommit int
 }
@@ -28,6 +30,17 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 		reply.Success = false
 	}
 
+	if !reply.Success {
+		return
+	}
+
+	// step 2
+	if len(rf.log) >= args.PrevLogIndex+1 && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm { // TODO weird...?
+		reply.Success = false
+		return
+	}
+
+	// step 3
 	if reply.Success {
 		// delete conflicting entries (pg 4, append step #4)
 

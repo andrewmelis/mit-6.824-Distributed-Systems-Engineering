@@ -36,7 +36,8 @@ func (rf *Raft) replicate(command interface{}, doneCh chan struct{}) {
 		}
 
 		go func(peerIndex int) {
-			args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, Entries: []LogEntry{nextLog}, LeaderCommit: rf.commitIndex}
+			prevLogIndex := rf.nextIndex[peerIndex] - 1
+			args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, Entries: []LogEntry{nextLog}, LeaderCommit: rf.commitIndex, PrevLogIndex: prevLogIndex, PrevLogTerm: rf.log[prevLogIndex].Term}
 			reply := AppendEntriesReply{}
 			if ok := rf.sendAppendEntries(peerIndex, args, &reply); !ok {
 				// need to retry here or something?
@@ -45,6 +46,9 @@ func (rf *Raft) replicate(command interface{}, doneCh chan struct{}) {
 
 			if reply.Success { // TODO push this down to just `peerConfirmationCh <- reply` ???
 				DPrintf("leader %d got successful append entries response from peer %d\n", rf.me, peerIndex)
+				rf.nextIndex[peerIndex]++
+				rf.matchIndex[peerIndex]++ // push down
+
 				select {
 				case <-doneCh:
 					return // already replicated, don't care

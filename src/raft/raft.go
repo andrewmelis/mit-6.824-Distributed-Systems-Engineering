@@ -75,6 +75,10 @@ type Raft struct {
 	commitIndex int // index of highest log entry known to be committed
 	lastApplied int // index of highest log entry applied to state machine
 
+	/* volatile state on leaders */
+	nextIndex  []int
+	matchIndex []int
+
 	currentState raftState
 
 	resetCh       chan struct{}
@@ -209,6 +213,13 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 	rf.votedFor = -1
+	rf.nextIndex = make([]int, len(rf.peers))
+	rf.matchIndex = make([]int, len(rf.peers))
+	for i := 0; i < len(rf.peers); i++ {
+		rf.nextIndex[i] = len(rf.log) + 1 // per spec figure 2
+		rf.matchIndex[i] = 0              // per spec figure 2
+	}
+
 	rf.applyCh = applyCh
 	rf.resetCh = make(chan struct{})
 	rf.stateChangeCh = make(chan struct{})
