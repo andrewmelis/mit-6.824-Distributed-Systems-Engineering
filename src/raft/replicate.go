@@ -2,6 +2,7 @@ package raft
 
 // replicates, then applies -- better name to encompass both steps?
 func (rf *Raft) replicateLog(command interface{}) {
+	DPrintf("leader %d attempting to replicate command %v\n", rf.me, command)
 	doneCh := make(chan struct{})
 
 	go rf.replicate(command, doneCh) // push go down to replicate, or go here?
