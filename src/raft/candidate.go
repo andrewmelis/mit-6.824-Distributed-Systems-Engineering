@@ -28,7 +28,7 @@ func (rf *Raft) beCandidate() {
 
 func (rf *Raft) startElection(wonElectionCh chan struct{}) {
 	DPrintf("peer %d starting election\n", rf.me)
-	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: rf.lastLogEntry().Term, LastLogTerm: rf.lastApplied}
+	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: rf.lastApplied, LastLogTerm: rf.lastLogEntry().Term}
 	reply := RequestVoteReply{}
 
 	electionVotesCh := make(chan int)
