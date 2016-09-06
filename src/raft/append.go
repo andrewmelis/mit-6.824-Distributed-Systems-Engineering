@@ -64,10 +64,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 		DPrintf("peer %d applied msg: %+v.\n\t commit index: %d, lastApplied: %d\n", rf.me, applyMsg, rf.commitIndex, rf.lastApplied)
 	}
 
-	if reply.Success {
-		rf.appendEntriesCh <- struct{}{}
-	}
-
+	rf.appendEntriesCh <- struct{}{}
 }
 
 func min(x, y int) int {
