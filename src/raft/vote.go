@@ -50,6 +50,11 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 // as defined at end of section 5.4.1
 func (rf *Raft) AtLeastAsUpToDate(candidate RequestVoteArgs) bool {
 	lastLogEntry := rf.lastLogEntry() // NOTE: this could be "zero" struct
+
+	DPrintf("comparing last log entries\n")
+	DPrintf("candidate peer %d's last log index=%d and term=%d\n", candidate.CandidateId, candidate.LastLogIndex, candidate.LastLogTerm)
+	DPrintf("peer %d's last log index=%d and term=%d\n", rf.me, rf.commitIndex, lastLogEntry.Term)
+
 	switch {
 	case candidate.LastLogTerm > lastLogEntry.Term:
 		return true

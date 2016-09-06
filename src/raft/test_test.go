@@ -108,24 +108,27 @@ func TestFailAgree(t *testing.T) {
 
 	cfg.one(101, servers)
 
-	// follower network failure
 	leader := cfg.checkOneLeader()
+	fmt.Printf("follower network failure. disconnecting %d\n", (leader+1)%3)
 	cfg.disconnect((leader + 1) % servers)
 
-	// agree despite one failed server?
+	fmt.Printf("agree despite one failed server?\n")
 	cfg.one(102, servers-1)
 	cfg.one(103, servers-1)
 	time.Sleep(RaftElectionTimeout)
 	cfg.one(104, servers-1)
 	cfg.one(105, servers-1)
 
-	// failed server re-connected
+	fmt.Printf("failed server re-connected\n")
 	cfg.connect((leader + 1) % servers)
 
-	// agree with full set of servers?
+	fmt.Printf("agree with full set of servers?\n")
+	fmt.Printf("\n\n\n\n\n")
 	cfg.one(106, servers)
+	fmt.Printf("106 worked...\n")
 	time.Sleep(RaftElectionTimeout)
 	cfg.one(107, servers)
+	fmt.Printf("107 worked...\n")
 
 	fmt.Printf("  ... Passed\n")
 }
