@@ -35,25 +35,28 @@ func (rf *Raft) beLeader() {
 					continue
 				}
 
-				DPrintf("leader peer %d sending heartbeat to peer %d\n", rf.me, i)
-
-				go func(peerIndex int) {
-					prevLogIndex := rf.nextIndex[peerIndex] - 1
-					var prevLogTerm int
-					if prevLogIndex == 0 {
-						prevLogTerm = 1
-					} else {
-						prevLogTerm = rf.log[prevLogIndex-1].Term
-					}
-
-					args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, Entries: []LogEntry{}, LeaderCommit: rf.commitIndex, PrevLogIndex: prevLogIndex, PrevLogTerm: prevLogTerm}
-					if ok := rf.sendAppendEntries(peerIndex, args, &AppendEntriesReply{}); !ok {
-						// TODO: need to return here?
-					}
-
-					// TODO do some bookkeeping on peers and stuff
-				}(i)
+				go rf.sendHeartbeat(i)
 			}
 		}
+	}
+}
+
+func (rf *Raft) sendHeartbeat(peerIndex int) {
+	DPrintf("leader peer %d sending heartbeat to peer %d\n", rf.me, peerIndex)
+
+	prevLogIndex := rf.nextIndex[peerIndex] - 1
+	var prevLogTerm int
+	if prevLogIndex == 0 {
+		prevLogTerm = 1
+	} else {
+		prevLogTerm = rf.log[prevLogIndex-1].Term
+	}
+
+	var logsToSend []LogEntry
+	args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, Entries: logsToSend, LeaderCommit: rf.commitIndex, PrevLogIndex: prevLogIndex, PrevLogTerm: prevLogTerm}
+	reply := AppendEntriesReply{}
+	if ok := rf.sendAppendEntries(peerIndex, args, &reply); !ok {
+		// TODO: need to return here?
+		DPrintf("append RPC from leader %d to peer %d failed!\n", rf.me, peerIndex)
 	}
 }
