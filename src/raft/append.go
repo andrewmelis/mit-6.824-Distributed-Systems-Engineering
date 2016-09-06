@@ -37,7 +37,6 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	// step 2
 	if len(rf.log) >= args.PrevLogIndex+1 && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm { // TODO weird...?
 		reply.Success = false
-		return
 	}
 
 	// step 3
