@@ -18,14 +18,15 @@ func (rf *Raft) beLeader() {
 
 	for {
 		select {
+		case <-rf.stateChangeCh:
+			rf.resetCh <- struct{}{}
+			go rf.beFollower()
 		case <-rf.appendEntriesCh:
 			rf.resetCh <- struct{}{}
 			go rf.beFollower()
 			return
-		case <-rf.requestVoteCh:
-			rf.resetCh <- struct{}{}
-			go rf.beFollower()
-			return
+		case handler := <-rf.leaderRequestVoteCh:
+			rf.leaderHandleRequestVote(handler)
 		case <-rf.clientRequestCh:
 			rf.resetCh <- struct{}{}
 		case <-time.After(heartbeatTimeout):
@@ -38,6 +39,41 @@ func (rf *Raft) beLeader() {
 				go rf.sendHeartbeat(i)
 			}
 		}
+	}
+}
+
+func (rf *Raft) leaderHandleRequestVote(handler RequestVoteHandler) {
+	DPrintf("in new leader extracted bit\n")
+	args := handler.args
+	reply := RequestVoteReply{}
+
+	replyCh := handler.replyCh
+	defer func(reply RequestVoteReply) { replyCh <- &reply }(reply)
+
+	reply.Term = rf.currentTerm
+
+	var shouldConvert bool
+
+	switch {
+	case args.Term < rf.currentTerm:
+		reply.VoteGranted = false
+		return
+	case args.Term > rf.currentTerm:
+		rf.setTerm(args.Term)
+		reply.Term = rf.currentTerm
+		shouldConvert = true
+	}
+
+	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
+		reply.VoteGranted = true
+		rf.votedFor = args.CandidateId
+	} else {
+		reply.VoteGranted = false
+	}
+
+	// TODO move me somewhere else
+	if reply.VoteGranted || shouldConvert {
+		rf.stateChangeCh <- struct{}{}
 	}
 }
 

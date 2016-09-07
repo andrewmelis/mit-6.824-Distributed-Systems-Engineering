@@ -85,9 +85,12 @@ type Raft struct {
 	stateChangeCh chan struct{} // TODO this is ugly
 
 	// rpc channels
-	requestVoteCh   chan struct{}
-	appendEntriesCh chan struct{}
-	clientRequestCh chan struct{}
+	requestVoteCh         chan struct{}
+	followerRequestVoteCh chan RequestVoteHandler
+	candidateRequestVoteCh chan RequestVoteHandler
+	leaderRequestVoteCh   chan RequestVoteHandler
+	appendEntriesCh       chan struct{}
+	clientRequestCh       chan struct{}
 
 	applyCh chan ApplyMsg
 }

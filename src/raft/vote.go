@@ -18,31 +18,59 @@ type RequestVoteReply struct {
 	VoteGranted bool
 }
 
+type RequestVoteHandler struct {
+	args    RequestVoteArgs
+	replyCh chan *RequestVoteReply
+}
+
 //
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	switch {
-	case args.Term < rf.currentTerm:
-		reply.VoteGranted = false
+	if rf.currentState == follower {
+		replyCh := make(chan *RequestVoteReply)
+		handler := RequestVoteHandler{args, replyCh}
+		rf.followerRequestVoteCh <- handler
+
+		reply = <-replyCh
 		return
-	case args.Term > rf.currentTerm:
-		rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
-	}
+	} else if rf.currentState == leader {
+		replyCh := make(chan *RequestVoteReply)
+		handler := RequestVoteHandler{args, replyCh}
+		rf.leaderRequestVoteCh <- handler
 
-	reply.Term = rf.currentTerm
+		reply = <-replyCh
+		return
+		// } else if rf.currentState == candidate {
+		// 	replyCh := make(chan *RequestVoteReply)
+		// 	handler := RequestVoteHandler{args, replyCh}
+		// 	rf.candidateRequestVoteCh <- handler
 
-	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
-		reply.VoteGranted = true
-		rf.votedFor = args.CandidateId
+		// 	reply = <-replyCh
+		// 	return
 	} else {
-		reply.VoteGranted = false
-	}
+		switch {
+		case args.Term < rf.currentTerm:
+			reply.VoteGranted = false
+			return
+		case args.Term > rf.currentTerm:
+			rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
+		}
 
-	// TODO move me somewhere else
-	// if reply.VoteGranted {
-	rf.requestVoteCh <- struct{}{}
-	// }
+		reply.Term = rf.currentTerm
+
+		if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
+			reply.VoteGranted = true
+			rf.votedFor = args.CandidateId
+		} else {
+			reply.VoteGranted = false
+		}
+
+		// TODO move me somewhere else
+		if reply.VoteGranted {
+			rf.requestVoteCh <- struct{}{}
+		}
+	}
 }
 
 // TODO is there an official compare interface?
