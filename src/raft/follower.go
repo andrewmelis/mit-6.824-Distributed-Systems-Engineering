@@ -7,10 +7,9 @@ func (rf *Raft) beFollower() {
 	for {
 		select {
 		case <-rf.stateChangeCh:
-			DPrintf("peer %d done being follower\n", rf.me)
 			return // better way to do this?
 		case handler := <-rf.followerRequestVoteCh:
-			DPrintf("peer %d concluded a request vote RPC\n", rf.me)
+			DPrintf("peer %d handling request vote RPC\n", rf.me)
 			rf.followerHandleRequestVote(handler)
 		case <-rf.appendEntriesCh:
 			DPrintf("peer %d concluded an append entries RPC\n", rf.me)
@@ -22,10 +21,13 @@ func (rf *Raft) beFollower() {
 func (rf *Raft) followerHandleRequestVote(handler RequestVoteHandler) {
 	DPrintf("in new follower extracted bit\n")
 	args := handler.args
-	reply := RequestVoteReply{}
+	reply := handler.reply
 
 	replyCh := handler.replyCh
-	defer func(reply RequestVoteReply) { replyCh <- &reply }(reply)
+	defer func(reply *RequestVoteReply) {
+		DPrintf("replying with %+v\n", reply)
+		replyCh <- reply
+	}(reply)
 
 	reply.Term = rf.currentTerm
 

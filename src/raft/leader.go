@@ -45,10 +45,10 @@ func (rf *Raft) beLeader() {
 func (rf *Raft) leaderHandleRequestVote(handler RequestVoteHandler) {
 	DPrintf("in new leader extracted bit\n")
 	args := handler.args
-	reply := RequestVoteReply{}
+	reply := handler.reply
 
 	replyCh := handler.replyCh
-	defer func(reply RequestVoteReply) { replyCh <- &reply }(reply)
+	defer func(reply *RequestVoteReply) { replyCh <- reply }(reply)
 
 	reply.Term = rf.currentTerm
 

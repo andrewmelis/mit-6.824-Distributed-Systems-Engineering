@@ -23,6 +23,39 @@ func (rf *Raft) beCandidate() {
 	case <-rf.requestVoteCh:
 		rf.resetCh <- struct{}{}
 		go rf.beFollower()
+	case handler := <-rf.candidateRequestVoteCh:
+		rf.followerHandleRequestVote(handler)
+	}
+}
+
+func (rf *Raft) candidateHandleRequestVote(handler RequestVoteHandler) {
+	DPrintf("in new candidate extracted bit\n")
+	args := handler.args
+	reply := handler.reply
+
+	replyCh := handler.replyCh
+	defer func(reply *RequestVoteReply) { replyCh <- reply }(reply)
+
+	reply.Term = rf.currentTerm
+
+	switch {
+	case args.Term < rf.currentTerm:
+		reply.VoteGranted = false
+		return
+	case args.Term > rf.currentTerm:
+		rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
+		reply.Term = rf.currentTerm
+	}
+
+	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
+		reply.VoteGranted = true
+		rf.votedFor = args.CandidateId
+	} else {
+		reply.VoteGranted = false
+	}
+
+	if reply.VoteGranted {
+		rf.resetCh <- struct{}{}
 	}
 }
 
@@ -44,6 +77,8 @@ func (rf *Raft) startElection(wonElectionCh chan struct{}) {
 			if ok := rf.sendRequestVote(peerIndex, args, &reply); !ok {
 				return
 			}
+
+			DPrintf("candidate %d received reply %+v from peer %d\n", rf.me, reply, peerIndex)
 
 			if reply.VoteGranted {
 				select {

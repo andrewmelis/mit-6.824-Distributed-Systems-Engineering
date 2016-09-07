@@ -18,8 +18,10 @@ type RequestVoteReply struct {
 	VoteGranted bool
 }
 
+// TODO rename to XXJob
 type RequestVoteHandler struct {
 	args    RequestVoteArgs
+	reply   *RequestVoteReply
 	replyCh chan *RequestVoteReply
 }
 
@@ -27,49 +29,56 @@ type RequestVoteHandler struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
+	DPrintf("peer %d received request vote RPC: %+v\n", rf.me, args)
 	if rf.currentState == follower {
+		DPrintf("in rpc follower block\n")
 		replyCh := make(chan *RequestVoteReply)
-		handler := RequestVoteHandler{args, replyCh}
+		handler := RequestVoteHandler{args, reply, replyCh}
 		rf.followerRequestVoteCh <- handler
 
-		reply = <-replyCh
+		<-replyCh
+		DPrintf("follower %d replied %+v to candidate %d\n", rf.me, reply, args.CandidateId)
 		return
 	} else if rf.currentState == leader {
+		DPrintf("in rpc leader block\n")
 		replyCh := make(chan *RequestVoteReply)
-		handler := RequestVoteHandler{args, replyCh}
+		handler := RequestVoteHandler{args, reply, replyCh}
 		rf.leaderRequestVoteCh <- handler
 
-		reply = <-replyCh
+		<-replyCh
+		DPrintf("leader %d replied %b to candidate %d\n", rf.me, reply.VoteGranted, args.CandidateId)
 		return
-		// } else if rf.currentState == candidate {
-		// 	replyCh := make(chan *RequestVoteReply)
-		// 	handler := RequestVoteHandler{args, replyCh}
-		// 	rf.candidateRequestVoteCh <- handler
+	} else if rf.currentState == candidate {
+		replyCh := make(chan *RequestVoteReply)
+		handler := RequestVoteHandler{args, reply, replyCh}
+		rf.candidateRequestVoteCh <- handler
 
-		// 	reply = <-replyCh
-		// 	return
-	} else {
-		switch {
-		case args.Term < rf.currentTerm:
-			reply.VoteGranted = false
-			return
-		case args.Term > rf.currentTerm:
-			rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
-		}
+		<-replyCh
+		DPrintf("candidate %d replied %b to candidate %d\n", rf.me, reply.VoteGranted, args.CandidateId)
+		return
+		// } else {
+		// 	DPrintf("in rpc fallthrough block\n")
+		// 	switch {
+		// 	case args.Term < rf.currentTerm:
+		// 		reply.VoteGranted = false
+		// 		return
+		// 	case args.Term > rf.currentTerm:
+		// 		rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
+		// 	}
 
-		reply.Term = rf.currentTerm
+		// 	reply.Term = rf.currentTerm
 
-		if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
-			reply.VoteGranted = true
-			rf.votedFor = args.CandidateId
-		} else {
-			reply.VoteGranted = false
-		}
+		// 	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
+		// 		reply.VoteGranted = true
+		// 		rf.votedFor = args.CandidateId
+		// 	} else {
+		// 		reply.VoteGranted = false
+		// 	}
 
-		// TODO move me somewhere else
-		if reply.VoteGranted {
-			rf.requestVoteCh <- struct{}{}
-		}
+		// 	// TODO move me somewhere else
+		// 	if reply.VoteGranted {
+		// 		rf.requestVoteCh <- struct{}{}
+		// 	}
 	}
 }
 
