@@ -29,57 +29,12 @@ type RequestVoteHandler struct {
 // example RequestVote RPC handler.
 //
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
-	DPrintf("peer %d received request vote RPC: %+v\n", rf.me, args)
-	if rf.currentState == follower {
-		DPrintf("in rpc follower block\n")
-		replyCh := make(chan *RequestVoteReply)
-		handler := RequestVoteHandler{args, reply, replyCh}
-		rf.followerRequestVoteCh <- handler
+	replyCh := make(chan *RequestVoteReply)
+	handler := RequestVoteHandler{args, reply, replyCh}
+	rf.requestVoteCh <- handler
 
-		<-replyCh
-		DPrintf("follower %d replied %+v to candidate %d\n", rf.me, reply, args.CandidateId)
-		return
-	} else if rf.currentState == leader {
-		DPrintf("in rpc leader block\n")
-		replyCh := make(chan *RequestVoteReply)
-		handler := RequestVoteHandler{args, reply, replyCh}
-		rf.leaderRequestVoteCh <- handler
-
-		<-replyCh
-		DPrintf("leader %d replied %b to candidate %d\n", rf.me, reply.VoteGranted, args.CandidateId)
-		return
-	} else if rf.currentState == candidate {
-		replyCh := make(chan *RequestVoteReply)
-		handler := RequestVoteHandler{args, reply, replyCh}
-		rf.candidateRequestVoteCh <- handler
-
-		<-replyCh
-		DPrintf("candidate %d replied %b to candidate %d\n", rf.me, reply.VoteGranted, args.CandidateId)
-		return
-		// } else {
-		// 	DPrintf("in rpc fallthrough block\n")
-		// 	switch {
-		// 	case args.Term < rf.currentTerm:
-		// 		reply.VoteGranted = false
-		// 		return
-		// 	case args.Term > rf.currentTerm:
-		// 		rf.setTerm(args.Term) // only reset term (and votedFor) if rf is behind
-		// 	}
-
-		// 	reply.Term = rf.currentTerm
-
-		// 	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) && rf.AtLeastAsUpToDate(args) {
-		// 		reply.VoteGranted = true
-		// 		rf.votedFor = args.CandidateId
-		// 	} else {
-		// 		reply.VoteGranted = false
-		// 	}
-
-		// 	// TODO move me somewhere else
-		// 	if reply.VoteGranted {
-		// 		rf.requestVoteCh <- struct{}{}
-		// 	}
-	}
+	<-replyCh
+	return
 }
 
 // TODO is there an official compare interface?

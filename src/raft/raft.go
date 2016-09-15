@@ -85,7 +85,7 @@ type Raft struct {
 	stateChangeCh chan struct{} // TODO this is ugly
 
 	// rpc channels
-	requestVoteCh          chan struct{}
+	requestVoteCh          chan RequestVoteHandler
 	followerRequestVoteCh  chan RequestVoteHandler
 	candidateRequestVoteCh chan RequestVoteHandler
 	leaderRequestVoteCh    chan RequestVoteHandler
@@ -227,7 +227,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.resetCh = make(chan struct{})
 	rf.stateChangeCh = make(chan struct{})
 
-	rf.requestVoteCh = make(chan struct{})
+	rf.requestVoteCh = make(chan RequestVoteHandler)
 
 	rf.leaderRequestVoteCh = make(chan RequestVoteHandler)
 	rf.followerRequestVoteCh = make(chan RequestVoteHandler)

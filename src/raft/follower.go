@@ -8,7 +8,7 @@ func (rf *Raft) beFollower() {
 		select {
 		case <-rf.stateChangeCh:
 			return // better way to do this?
-		case handler := <-rf.followerRequestVoteCh:
+		case handler := <-rf.requestVoteCh:
 			DPrintf("peer %d handling request vote RPC\n", rf.me)
 			rf.followerHandleRequestVote(handler)
 		case <-rf.appendEntriesCh:
