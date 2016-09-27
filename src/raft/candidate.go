@@ -1,7 +1,7 @@
 package raft
 
 func (rf *Raft) beCandidate() {
-	rf.requestVoteCh = make(chan struct{}) // TODO HACK
+	rf.requestVoteCh = make(chan RequestVoteHandler) // TODO HACK
 
 	rf.currentState = candidate
 	rf.setTerm(rf.currentTerm + 1)
